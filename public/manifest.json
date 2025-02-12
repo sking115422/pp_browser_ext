@@ -1,25 +1,32 @@
 {
-    "name": "SEGaurd",
-    "version": "1.0",
-    "manifest_version": 3,
-    "action": {
-      "default_popup": "popup.html",
-      "default_title": "SEGaurd"
-    },
-    "background": {
-      "service_worker": "background.js",
-      "type": "module"
-    },
-    "content_security_policy": {
-      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
-    },
-    "permissions": ["storage"],
-    "host_permissions": ["*://*/*"],
-    "web_accessible_resources": [
-      {
-        "resources": ["models/*"],
-        "matches": ["<all_urls>"]
-      }
-    ]
-  }
-  
+  "name": "SEGaurd",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SEGaurd"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval';"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": ["*://*/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["models/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

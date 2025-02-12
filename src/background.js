@@ -1,20 +1,25 @@
 // src/background.js
 
-import * as ort from 'onnxruntime-web';
-
-async function loadModel() {
-  try {
-    // Get the absolute URL to your model file from the extension
-    const modelUrl = chrome.runtime.getURL('models/m7_e2.onnx');
-    console.log("Loading ONNX model from:", modelUrl);
-    
-    // Create an inference session using onnxruntime-web
-    const session = await ort.InferenceSession.create(modelUrl);
-    
-    console.log("Model loaded successfully:", session);
-  } catch (error) {
-    console.error("Error loading ONNX model:", error);
-  }
+function captureScreenshotAndSend() {
+  console.log("[Background] Attempting to capture screenshot...");
+  chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+    if (chrome.runtime.lastError || !dataUrl) {
+      console.error("[Background] Error capturing screenshot:", chrome.runtime.lastError);
+      return;
+    }
+    console.log("[Background] Screenshot captured. Sending to sandbox.");
+    // Send the screenshot to the sandbox page.
+    chrome.runtime.sendMessage({ type: 'screenshotCaptured', dataUrl });
+  });
 }
 
-loadModel();
+setInterval(() => {
+  chrome.storage.local.get("toggleState", (data) => {
+    if (data.toggleState) {
+      console.log("[Background] Toggle is ON. Capturing screenshot...");
+      captureScreenshotAndSend();
+    } else {
+      console.log("[Background] Toggle is OFF; skipping capture.");
+    }
+  });
+}, 30000);
