@@ -1,3 +1,5 @@
+// src/hot-reload.js
+
 const filesToWatch = ["background.js", "content.js", "popup.js"];
 
 filesToWatch.forEach((file) => {

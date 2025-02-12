@@ -1,3 +1,5 @@
+// src/popup.js
+
 document.addEventListener("DOMContentLoaded", () => {
     const toggleButton = document.getElementById("toggleButton");
 
