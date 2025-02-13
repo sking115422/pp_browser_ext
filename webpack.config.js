@@ -5,7 +5,10 @@ module.exports = {
   mode: "development", // or "production" when ready
   entry: {
     popup: "./src/popup.js",
-    background: "./src/background.js"
+    background: "./src/background.js",
+    offscreen: "./src/offscreen.js",
+    ocr_worker: "./src/ocr_worker.js",
+    onnx_worker: "./src/onnx_worker.js"
   },
   output: {
     path: path.resolve(__dirname, "dist"),
