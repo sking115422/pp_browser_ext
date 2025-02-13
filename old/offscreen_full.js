@@ -1,41 +1,42 @@
-// src/sandbox.js
+console.log("[Offscreen] Offscreen document loaded.");
 
-console.log("[Sandbox] Sandbox page loaded.");
+chrome.runtime.sendMessage({ type: 'offscreenLoaded', message: "Offscreen document is active." });
 
 // Instantiate the two workers.
-const ocrWorker = new Worker('ocr-worker.js', { type: 'module' });
-const onnxWorker = new Worker('onnx-worker.js', { type: 'module' });
-console.log("[Sandbox] OCR and ONNX workers instantiated.");
+const ocrWorker = new Worker('ocr_worker.js', { type: 'module' });
+const onnxWorker = new Worker('onnx_worker.js', { type: 'module' });
+console.log("[Offscreen] OCR and ONNX workers instantiated.");
 
-const sandboxState = {
+const offscreenState = {
   resizedDataUrl: null,
   imageTensor: null // { data: ArrayBuffer, dims: [1, 3, 224, 224] }
 };
 
 let latestOCRText = null;
 
+// Listen for messages from the background.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("[Sandbox] Message received from background:", message);
+  console.log("[Offscreen] Message received from background:", message);
   if (message.type === 'screenshotCaptured') {
     processScreenshot(message.dataUrl);
   }
 });
 
 async function processScreenshot(dataUrl) {
-  console.log("[Sandbox] Processing screenshot...");
+  console.log("[Offscreen] Processing screenshot...");
   const img = new Image();
   img.src = dataUrl;
   img.onload = () => {
-    console.log("[Sandbox] Image loaded from screenshot dataUrl.");
+    console.log("[Offscreen] Image loaded from dataUrl.");
     const canvas = new OffscreenCanvas(224, 224);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, 224, 224);
-    
+
     canvas.convertToBlob().then(blob => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        sandboxState.resizedDataUrl = reader.result;
-        console.log("[Sandbox] Resized image dataUrl stored.");
+        offscreenState.resizedDataUrl = reader.result;
+        console.log("[Offscreen] Resized image dataUrl stored.");
       };
       reader.readAsDataURL(blob);
     });
@@ -56,36 +57,36 @@ async function processScreenshot(dataUrl) {
         transposed[c * numPixels + i] = floatData[i * 3 + c];
       }
     }
-    sandboxState.imageTensor = {
+    offscreenState.imageTensor = {
       data: transposed.buffer,
       dims: [1, 3, 224, 224]
     };
-    console.log("[Sandbox] Image tensor prepared.");
+    console.log("[Offscreen] Image tensor prepared.");
 
-    console.log("[Sandbox] Sending screenshot to OCR worker.");
+    console.log("[Offscreen] Sending screenshot to OCR worker.");
     ocrWorker.postMessage({ type: 'performOCR', dataUrl });
   };
 
   img.onerror = (err) => {
-    console.error("[Sandbox] Error loading image from dataUrl", err);
+    console.error("[Offscreen] Error loading image from dataUrl", err);
   };
 }
 
 ocrWorker.onmessage = (e) => {
-  console.log("[Sandbox] Message received from OCR worker:", e.data);
+  console.log("[Offscreen] Message received from OCR worker:", e.data);
   if (e.data.type === 'ocrResult') {
     latestOCRText = e.data.text;
-    console.log("[Sandbox] OCR text received:", latestOCRText);
+    console.log("[Offscreen] OCR text received:", latestOCRText);
     // Prepare dummy token arrays.
     const dummyInputIds = new Int32Array(128).fill(0);
     const dummyAttentionMask = new Int32Array(128).fill(1);
     const payload = {
-      imageTensor: sandboxState.imageTensor,
+      imageTensor: offscreenState.imageTensor,
       input_ids: dummyInputIds.buffer,
       attention_mask: dummyAttentionMask.buffer,
       ocrText: latestOCRText
     };
-    console.log("[Sandbox] Sending data to ONNX worker with payload:", payload);
+    console.log("[Offscreen] Sending payload to ONNX worker:", payload);
     onnxWorker.postMessage({ type: 'runInference', payload }, [
       payload.imageTensor.data,
       payload.input_ids,
@@ -95,19 +96,20 @@ ocrWorker.onmessage = (e) => {
 };
 
 onnxWorker.onmessage = (e) => {
-  console.log("[Sandbox] Message received from ONNX worker:", e.data);
+  console.log("[Offscreen] Message received from ONNX worker:", e.data);
   if (e.data.type === 'inferenceResult') {
     const { classification, inferenceTime } = e.data;
-    console.log("[Sandbox] Inference result:", classification, inferenceTime);
+    console.log("[Offscreen] Inference result received:", classification, inferenceTime);
+    // Forward results to the popup.
     chrome.runtime.sendMessage({
       type: 'updateResults',
       classification,
       inferenceTime,
-      screenshot: sandboxState.resizedDataUrl
+      screenshot: offscreenState.resizedDataUrl
     });
-    console.log("[Sandbox] Results forwarded to popup.");
+    console.log("[Offscreen] Forwarded results to popup.");
   }
 };
 
-ocrWorker.onerror = (e) => console.error("[Sandbox] OCR Worker error:", e);
-onnxWorker.onerror = (e) => console.error("[Sandbox] ONNX Worker error:", e);
+ocrWorker.onerror = (e) => console.error("[Offscreen] OCR Worker error:", e);
+onnxWorker.onerror = (e) => console.error("[Offscreen] ONNX Worker error:", e);

@@ -1,4 +1,4 @@
-// src/onnx-worker.js
+// src/onnx_worker.js
 import * as ort from 'onnxruntime-web';
 
 console.log("[ONNX Worker] Worker started.");
@@ -31,7 +31,7 @@ self.onmessage = async (e) => {
       };
 
       if (!self.session) {
-        const modelUrl = new URL('../models/m7_e2.onnx', import.meta.url).toString();
+        const modelUrl = new URL('../public/models/m7_e2.onnx', import.meta.url).toString();
         console.log("[ONNX Worker] Loading model from:", modelUrl);
         self.session = await ort.InferenceSession.create(modelUrl);
         console.log("[ONNX Worker] Model loaded.");

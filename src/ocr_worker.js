@@ -1,4 +1,4 @@
-// src/ocr-worker.js
+// src/ocr_worker.js
 
 import Tesseract from 'tesseract.js';
 

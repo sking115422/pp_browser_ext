@@ -1,4 +1,4 @@
-// src/hot-reload.js
+// src/hot_reload.js
 
 const filesToWatch = ["background.js", "content.js", "popup.js"];
 
