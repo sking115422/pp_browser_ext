@@ -26,7 +26,7 @@
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
-      "resources": ["models/*"],
+      "resources": ["models/*", "libs/*"],
       "matches": ["<all_urls>"]
     }
   ]
