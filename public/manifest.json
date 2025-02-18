@@ -11,7 +11,8 @@
     "type": "module"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; object-src 'self'"
   },
   "permissions": [
     "tabs",
@@ -20,14 +21,16 @@
     "storage",
     "unlimitedStorage",
     "downloads",
-    "offscreen",
     "contextMenus"
   ],
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
-      "resources": ["models/*", "libs/*"],
+      "resources": ["models/*", "libs/*", "onnx_worker.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  }
 }

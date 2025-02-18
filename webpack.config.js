@@ -6,7 +6,7 @@ module.exports = {
   entry: {
     popup: "./src/popup.js",
     background: "./src/background.js",
-    offscreen: "./src/offscreen.js",
+    sandbox: "./src/sandbox.js",
     ocr_worker: "./src/ocr_worker.js",
     onnx_worker: "./src/onnx_worker.js"
   },
