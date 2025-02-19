@@ -1,22 +1,48 @@
-// src/ocr_worker.js
+// ocr_worker.js (classic worker)
+// self.onmessage = async function (e) {
+//   if (e.data.type === 'initOcr') {
+//     const { tesseractWorkerUrl, tesseractCoreUrl } = e.data;
+//     // Dynamically import Tesseract (using importScripts)
+//     importScripts(e.data.tesseractUrl);
+//     // Use the worker API to create a Tesseract worker:
+//     const { createWorker } = Tesseract;
+//     const worker = createWorker({
+//       // Ensure these paths point to your local files
+//       workerPath: tesseractWorkerUrl,
+//       corePath: tesseractCoreUrl, // optional: if you have a local core file (often ends with .wasm.js)
+//       logger: m => console.log("[OCR Worker] Logger:", m),
+//     });
+//     await worker.load();
+//     await worker.loadLanguage('eng');
+//     await worker.initialize('eng');
+//     // Save the worker instance for later OCR calls.
+//     self.tesseractWorkerInstance = worker;
+//     self.postMessage({ type: 'initComplete' });
+//     return;
+//   }
 
-import Tesseract from 'tesseract.js';
+//   if (e.data.type === 'performOCR') {
+//     if (!self.tesseractWorkerInstance) {
+//       console.error("[OCR Worker] Tesseract worker is not initialized.");
+//       self.postMessage({ type: 'ocrResult', text: '' });
+//       return;
+//     }
+//     const { dataUrl } = e.data;
+//     try {
+//       const { data: { text } } = await self.tesseractWorkerInstance.recognize(dataUrl);
+//       console.log("[OCR Worker] OCR result obtained.");
+//       self.postMessage({ type: 'ocrResult', text });
+//     } catch (err) {
+//       console.error("[OCR Worker] Error during OCR:", err);
+//       self.postMessage({ type: 'ocrResult', text: '' });
+//     }
+//   }
+// };
 
-console.log("[OCR Worker] Worker started.");
 
-self.onmessage = async (e) => {
-  console.log("[OCR Worker] Message received:", e.data);
+self.onmessage = async function (e) {
   if (e.data.type === 'performOCR') {
-    const { dataUrl } = e.data;
-    try {
-      console.log("[OCR Worker] Running Tesseract OCR...");
-      const result = await Tesseract.recognize(dataUrl, 'eng', { logger: m => console.log("[OCR Worker] Logger:", m) });
-      const text = result.data.text;
-      console.log("[OCR Worker] OCR result obtained.");
-      self.postMessage({ type: 'ocrResult', text });
-    } catch (err) {
-      console.error("[OCR Worker] Error during OCR:", err);
-      self.postMessage({ type: 'ocrResult', text: '' });
-    }
+    console.log("[OCR Worker] Returning Dummy Text");
+    self.postMessage({ type: 'ocrResult', text: 'this is dummy text' });
   }
 };

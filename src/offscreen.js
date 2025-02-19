@@ -1,11 +1,22 @@
+// offscreen.js
 console.log("[Offscreen] Offscreen document loaded.");
 
 chrome.runtime.sendMessage({ type: 'offscreenLoaded', message: "Offscreen document is active." });
 
-// Instantiate the two workers.
-const ocrWorker = new Worker('ocr_worker.js', { type: 'module' });
+// Instantiate workers
+const tesseractUrl = chrome.runtime.getURL('libs/tesseract/tesseract.min.js');
+const tesseractWorkerUrl = chrome.runtime.getURL('libs/tesseract/worker.min.js');
+const ocrWorkerURL = chrome.runtime.getURL('ocr_worker.js');
+const ocrWorker = new Worker(ocrWorkerURL, { type: 'classic' });
+ocrWorker.postMessage({
+  type: 'initOcr',
+  tesseractUrl,
+  tesseractWorkerUrl
+});
+console.log("[Offscreen] OCR worker instantiated.");
+
 const onnxWorker = new Worker('onnx_worker.js', { type: 'module' });
-console.log("[Offscreen] OCR and ONNX workers instantiated.");
+console.log("[Offscreen] ONNX worker instantiated.");
 
 const offscreenState = {
   resizedDataUrl: null,
