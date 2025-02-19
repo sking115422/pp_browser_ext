@@ -7,8 +7,7 @@
     "default_title": "SEGaurd"
   },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
@@ -25,7 +24,7 @@
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
-      "resources": ["models/*", "libs/*", "onnx_worker.js"],
+      "resources": ["models/*", "libs/*"],
       "matches": ["<all_urls>"]
     }
   ]

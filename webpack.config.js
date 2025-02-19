@@ -6,8 +6,6 @@ module.exports = {
   entry: {
     popup: "./src/popup.js",
     background: "./src/background.js",
-    ocr_worker: "./src/ocr_worker.js",
-    onnx_worker: "./src/onnx_worker.js"
   },
   output: {
     path: path.resolve(__dirname, "dist"),
