@@ -18,7 +18,7 @@ self.onmessage = async (e) => {
 
       // For input_ids, create a BigInt64Array from the transferred buffer.
       const inputIdsArray = new BigInt64Array(payload.input_ids);
-      const inputIds = new ort.Tensor('int64', inputIdsArray, [1, 128]);
+      const inputIds = new ort.Tensor('int64', inputIdsArray, [1, 512]);
 
       // For attention_mask, create a BigInt64Array then convert to Float32Array.
       const attentionMaskBig = new BigInt64Array(payload.attention_mask);
@@ -27,7 +27,7 @@ self.onmessage = async (e) => {
         // Convert BigInt to Number.
         attentionMaskFloat[i] = Number(attentionMaskBig[i]);
       }
-      const attentionMask = new ort.Tensor('float32', attentionMaskFloat, [1, 128]);
+      const attentionMask = new ort.Tensor('float32', attentionMaskFloat, [1, 512]);
 
       // Assemble the feeds.
       const feeds = {
@@ -37,7 +37,7 @@ self.onmessage = async (e) => {
       };
 
       if (!self.session) {
-        const modelUrl = new URL('../public/models/m7_e2.onnx', import.meta.url).toString();
+        const modelUrl = new URL('../public/models/m7_e2_960x540_512.onnx', import.meta.url).toString();
         console.log("[ONNX Worker] Loading model from:", modelUrl);
         self.session = await ort.InferenceSession.create(modelUrl);
         console.log("[ONNX Worker] Model loaded.");

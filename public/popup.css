@@ -1,8 +1,12 @@
+html {
+    text-align: center;
+}
+
 body {
     font-family: Arial, sans-serif;
     text-align: center;
-    width: 300px;
     padding: 10px;
+    display: inline-block; /* Allows the width to shrink-to-fit its content */
 }
 
 button {
