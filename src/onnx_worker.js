@@ -35,6 +35,8 @@ self.onmessage = async (e) => {
         input_ids: inputIds,
         attention_mask: attentionMask
       };
+      
+      console.log("[ONNX Worker] Model input (feeds): ", feeds)
 
       if (!self.session) {
         const modelUrl = new URL('../public/models/m7_e2_960x540_512.onnx', import.meta.url).toString();
