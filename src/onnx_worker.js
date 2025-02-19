@@ -9,33 +9,23 @@ self.onmessage = async (e) => {
     const { payload } = e.data;
 
     try {
-      
-      // Image tensor: already a float32 tensor
+      // Create the image tensor as before.
       const imageTensor = new ort.Tensor(
         'float32',
         new Float32Array(payload.imageTensor.data),
         payload.imageTensor.dims
       );
 
-      // For input_ids, convert the transferred ArrayBuffer (from dummyInputIds) to a 32-bit typed view first.
-      const inputIdsArray = new Int32Array(payload.input_ids);
+      // For input_ids, create a BigInt64Array from the transferred buffer.
+      const inputIdsArray = new BigInt64Array(payload.input_ids);
+      const inputIds = new ort.Tensor('int64', inputIdsArray, [1, 128]);
 
-      // Convert each element to BigInt and store in a BigInt64Array.
-      const bigIntInputIds = new BigInt64Array(inputIdsArray.length);
-      for (let i = 0; i < inputIdsArray.length; i++) {
-        bigIntInputIds[i] = BigInt(inputIdsArray[i]);
-      }
-
-      // Create an ONNX tensor for input_ids as int64.
-      const inputIds = new ort.Tensor('int64', bigIntInputIds, [1, 128]);
-
-      // For attention_mask, we want float32.
-      // Create a typed view from the transferred ArrayBuffer.
-      const attentionMaskArray = new Int32Array(payload.attention_mask);
-      // Convert to Float32Array.
-      const attentionMaskFloat = new Float32Array(attentionMaskArray.length);
-      for (let i = 0; i < attentionMaskArray.length; i++) {
-        attentionMaskFloat[i] = attentionMaskArray[i];
+      // For attention_mask, create a BigInt64Array then convert to Float32Array.
+      const attentionMaskBig = new BigInt64Array(payload.attention_mask);
+      const attentionMaskFloat = new Float32Array(attentionMaskBig.length);
+      for (let i = 0; i < attentionMaskBig.length; i++) {
+        // Convert BigInt to Number.
+        attentionMaskFloat[i] = Number(attentionMaskBig[i]);
       }
       const attentionMask = new ort.Tensor('float32', attentionMaskFloat, [1, 128]);
 

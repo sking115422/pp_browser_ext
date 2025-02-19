@@ -1,4 +1,6 @@
 // offscreen.js
+import { AutoTokenizer } from '@xenova/transformers';
+
 console.log("[Offscreen] Offscreen document loaded.");
 
 chrome.runtime.sendMessage({ type: 'offscreenLoaded', message: "Offscreen document is active." });
@@ -24,6 +26,18 @@ const offscreenState = {
 };
 
 let latestOCRText = null;
+
+// Initialize the tokenizer once.
+// We store the promise so that later we can await it if needed.
+// const localTokenizerPath = chrome.runtime.getURL('models/bert_mini_tokenizer/');
+// console.log("[Offscreen] Tokenizer path: ", localTokenizerPath)
+const tokenizerPromise = AutoTokenizer.from_pretrained('bert_mini_tokenizer').then(tokenizer => {
+  console.log("[Offscreen] Local tokenizer loaded.");
+  return tokenizer;
+})
+.catch(err => {
+  console.error("[Offscreen] Error loading local tokenizer:", err);
+});
 
 // Listen for messages from the background.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -83,29 +97,47 @@ async function processScreenshot(dataUrl) {
   };
 }
 
-ocrWorker.onmessage = (e) => {
+// OCR Worker Call
+ocrWorker.onmessage = async (e) => {
   console.log("[Offscreen] Message received from OCR worker:", e.data);
   if (e.data.type === 'ocrResult') {
     latestOCRText = e.data.text;
     console.log("[Offscreen] OCR text received:", latestOCRText);
-    // Prepare dummy token arrays.
-    const dummyInputIds = new Int32Array(128).fill(0);
-    const dummyAttentionMask = new Int32Array(128).fill(1);
+    
+    // Await the tokenizer if it hasn't loaded yet.
+    const tokenizer = await tokenizerPromise;
+
+    // Tokenize the OCR text.
+    const { input_ids, attention_mask } = await tokenizer(latestOCRText, {
+      truncation: true,
+      padding: 'max_length',
+      max_length: 128,
+    });
+    
+    console.log("[Offscreen] Tokenized text:", { input_ids, attention_mask });
+    
+    // Extract the underlying typed arrays from the Proxy Tensor objects.
+    // Note: input_ids.data and attention_mask.data are BigInt64Array.
+    const inputIdsData = input_ids.data;         // BigInt64Array(128)
+    const attentionMaskData = attention_mask.data; // BigInt64Array(128)
+    
     const payload = {
       imageTensor: offscreenState.imageTensor,
-      input_ids: dummyInputIds.buffer,
-      attention_mask: dummyAttentionMask.buffer,
+      // Pass the underlying buffers
+      input_ids: inputIdsData.buffer,
+      attention_mask: attentionMaskData.buffer,
       ocrText: latestOCRText
     };
     console.log("[Offscreen] Sending payload to ONNX worker:", payload);
     onnxWorker.postMessage({ type: 'runInference', payload }, [
       payload.imageTensor.data,
       payload.input_ids,
-      payload.attention_mask,
+      payload.attention_mask
     ]);
   }
 };
 
+// ONNX Worker Call
 onnxWorker.onmessage = (e) => {
   console.log("[Offscreen] Message received from ONNX worker:", e.data);
   if (e.data.type === 'inferenceResult') {
