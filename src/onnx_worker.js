@@ -66,7 +66,7 @@ self.onmessage = async (e) => {
         classification = logits[1] > logits[0] ? 'SE' : 'benign';
       }
       console.log("[ONNX Worker] Inference complete. Classification:", classification, "Time:", inferenceTime);
-      self.postMessage({ type: 'inferenceResult', classification, inferenceTime: inferenceTime.toFixed(2) });
+      self.postMessage({ type: 'inferenceResult', classification, inferenceTime: inferenceTime.toFixed(2), ocrText: payload.ocrText });
     } catch (err) {
       console.error("[ONNX Worker] Error during inference:", err);
       self.postMessage({ type: 'inferenceResult', classification: 'error', inferenceTime: "0" });

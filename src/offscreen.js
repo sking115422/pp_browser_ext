@@ -101,7 +101,7 @@ ocrWorker.onmessage = (e) => {
     onnxWorker.postMessage({ type: 'runInference', payload }, [
       payload.imageTensor.data,
       payload.input_ids,
-      payload.attention_mask
+      payload.attention_mask,
     ]);
   }
 };
@@ -109,14 +109,15 @@ ocrWorker.onmessage = (e) => {
 onnxWorker.onmessage = (e) => {
   console.log("[Offscreen] Message received from ONNX worker:", e.data);
   if (e.data.type === 'inferenceResult') {
-    const { classification, inferenceTime } = e.data;
+    const { classification, inferenceTime, ocrText } = e.data;
     console.log("[Offscreen] Inference result received:", classification, inferenceTime);
     // Forward results to the popup.
     chrome.runtime.sendMessage({
       type: 'updateResults',
       classification,
       inferenceTime,
-      screenshot: offscreenState.resizedDataUrl
+      screenshot: offscreenState.resizedDataUrl,
+      ocrText
     });
     console.log("[Offscreen] Forwarded results to popup.");
   }

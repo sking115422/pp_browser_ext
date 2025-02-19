@@ -2,6 +2,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[Popup] Popup loaded.");
   const screenshotEl = document.getElementById("screenshot");
+  const ocrTextEl = document.getElementById("ocrText");
   const classificationEl = document.getElementById("classification");
   const inferenceTimeEl = document.getElementById("inferenceTime");
   const toggleButton = document.getElementById("toggleButton");
@@ -30,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("[Popup] Message received:", message);
     if (message.type === 'updateResults') {
       if (screenshotEl) screenshotEl.src = message.screenshot;
+      if (ocrTextEl) ocrTextEl.textContent = message.ocrText;
       if (classificationEl) classificationEl.textContent = message.classification;
       if (inferenceTimeEl) inferenceTimeEl.textContent = message.inferenceTime + " ms";
       console.log("[Popup] UI updated with new results.");
