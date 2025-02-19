@@ -212,6 +212,7 @@ onnxWorker.onmessage = (e) => {
       screenshot: offscreenState.resizedDataUrl,
       ocrText
     });
+    chrome.runtime.sendMessage({type: "inferenceFinished", data: true})
     console.log("[Offscreen] Forwarded results to popup.");
   }
 };

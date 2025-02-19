@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const ocrTextEl = document.getElementById("ocrText");
   const classificationEl = document.getElementById("classification");
   const inferenceTimeEl = document.getElementById("inferenceTime");
+  const totalTimeEl = document.getElementById("totalTime");
   const toggleButton = document.getElementById("toggleButton");
 
   chrome.storage.local.get("toggleState", (data) => {
@@ -34,7 +35,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (ocrTextEl) ocrTextEl.textContent = message.ocrText;
       if (classificationEl) classificationEl.textContent = message.classification;
       if (inferenceTimeEl) inferenceTimeEl.textContent = message.inferenceTime + " ms";
-      console.log("[Popup] UI updated with new results.");
+    }
+    if (message.type === 'totalTime') {
+      if (totalTimeEl) totalTimeEl.textContent = message.data + " ms";
+      console.log("[Popup] UI updated with new results.");      
     }
   });
 });

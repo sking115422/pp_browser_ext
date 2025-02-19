@@ -1,5 +1,8 @@
 // src/background.js
 
+let captureStartTime = 0;
+let totalTime = 0;
+
 // Ensure an offscreen document is created (if not already present)
 async function ensureOffscreenDocument() {
   if (await chrome.offscreen.hasDocument()) {
@@ -42,17 +45,28 @@ function captureScreenshotAndSend() {
   });
 }
 
-// Periodically capture screenshots if the extension's toggle is ON
 setInterval(() => {
   chrome.storage.local.get("toggleState", (data) => {
     if (data.toggleState) {
       console.log("[Background] Toggle is ON. Capturing screenshot...");
+      // Record the start time
+      captureStartTime = performance.now();
       captureScreenshotAndSend();
     } else {
       console.log("[Background] Toggle is OFF; skipping capture.");
     }
   });
 }, 10000);
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "inferenceFinished" && message.data === true) {
+    // Calculate the total time from capture start until inference finished
+    totalTime = performance.now() - captureStartTime;
+    chrome.runtime.sendMessage({type: "totalTime", data: totalTime})
+    console.log("[Background] Total time for capture and inference:", totalTime, "ms");
+    // You can store or use totalTime as needed.
+  }
+});
 
 // Listen for confirmation messages from the offscreen document
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
