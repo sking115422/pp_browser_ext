@@ -1,3 +1,5 @@
 node_modules
 dist
 ocr/models
+public/libs
+.DS_Store
