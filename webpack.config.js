@@ -6,6 +6,7 @@ module.exports = {
   entry: {
     popup: "./src/popup.js",
     background: "./src/background.js",
+    sandbox: "./src/sandbox.js"
   },
   output: {
     path: path.resolve(__dirname, "dist"),
