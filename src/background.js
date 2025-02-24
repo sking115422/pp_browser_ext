@@ -7,7 +7,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ screenshot: dataUrl });
       }
     });
-    // Return true to indicate that we wish to send a response asynchronously
+
+    // Keep the message channel open for async response
     return true;
   }
 });
