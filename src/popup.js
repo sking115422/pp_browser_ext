@@ -5,10 +5,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const screenshotEl = document.getElementById("screenshot");
   const ocrTextEl = document.getElementById("ocrText");
   const classificationEl = document.getElementById("classification");
-  const inferenceTimeEl = document.getElementById("inferenceTime");
+  const onnxInferenceTimeEl = document.getElementById("onnxInferenceTime");
   const totalTimeEl = document.getElementById("totalTime");
   const toggleButton = document.getElementById("toggleButton");
-  const sandboxFrame = document.getElementById("sandbox-frame");
+  const sandboxFrame = document.getElementById("sandboxIframe");
+  const ocrTimeEl = document.getElementById('ocrTime');
 
   // Update the toggle button based on stored state.
   chrome.storage.local.get("toggleState", (data) => {
@@ -143,8 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (message.type === 'inferenceResult') {
       console.log("[Popup] Inference result received:", message);
       if (classificationEl) classificationEl.textContent = message.classification;
-      if (inferenceTimeEl) inferenceTimeEl.textContent = message.inferenceTime + " ms";
-      if (ocrTextEl) ocrTextEl.textContent = message.ocrText;
+      if (onnxInferenceTimeEl) onnxInferenceTimeEl.textContent = message.onnxInferenceTime + " ms";
+      // if (ocrTextEl) ocrTextEl.textContent = message.ocrText;
       chrome.runtime.sendMessage({ type: "inferenceFinished", data: true });
     }
     
@@ -157,13 +158,23 @@ document.addEventListener("DOMContentLoaded", () => {
   // Listen for messages from the sandbox (OCR result).
   window.addEventListener("message", async (event) => {
     console.log("[Popup] Message received from sandbox:", event.data);
+
     const data = event.data;
+
     if (data.type === 'sandboxLoaded') {
       console.log("[Popup] Sandbox loaded:", data.message);
       chrome.runtime.sendMessage(data);
     }
     if (data.type === 'ocrResult' && data.text) {
       console.log("[Popup] OCR result received from sandbox:", data.text);
+
+      if (ocrTimeEl && data.ocrTime) {
+        ocrTimeEl.textContent = data.ocrTime.toFixed(2) + " ms";
+      }
+      if (ocrTextEl && data.text) {
+        ocrTextEl.textContent = data.text;
+      }
+      
       const processed = window.processedImage;
       if (!processed) {
         console.error("[Popup] Processed image not available.");

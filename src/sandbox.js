@@ -28,9 +28,14 @@ window.addEventListener("message", async (event) => {
       return;
     }
     try {
+      const startTime = performance.now();
+      // Perform OCR using the Tesseract worker.
       const { data: { text } } = await ocrWorker.recognize(message.dataUrl);
-      console.log("[Sandbox] OCR completed:", text);
-      window.parent.postMessage({ type: 'ocrResult', text }, "*");
+      const endTime = performance.now();
+      const ocrTime = endTime - startTime;
+      console.log("[Sandbox] OCR completed:", text, "Time:", ocrTime, "ms");
+      // Send the OCR result and timing back to the parent.
+      window.parent.postMessage({ type: 'ocrResult', text, ocrTime }, "*");
     } catch (err) {
       console.error("[Sandbox] OCR error:", err);
       window.parent.postMessage({ type: 'ocrError', error: err.message }, "*");

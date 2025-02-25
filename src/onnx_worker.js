@@ -37,17 +37,17 @@ self.onmessage = async (e) => {
       console.log("[ONNX Worker] Running inference...");
       const start = performance.now();
       const output = await session.run(feeds);
-      const inferenceTime = performance.now() - start;
+      const onnxInferenceTime = performance.now() - start;
       let classification = 'benign';
       if (output && output.output) {
         const logits = output.output.data;
         classification = logits[1] > logits[0] ? 'SE' : 'benign';
       }
-      console.log("[ONNX Worker] Inference complete. Classification:", classification, "Time:", inferenceTime);
-      self.postMessage({ type: 'inferenceResult', classification, inferenceTime: inferenceTime.toFixed(2), ocrText: payload.ocrText });
+      console.log("[ONNX Worker] Inference complete. Classification:", classification, "Time:", onnxInferenceTime);
+      self.postMessage({ type: 'inferenceResult', classification, onnxInferenceTime: onnxInferenceTime.toFixed(2), ocrText: payload.ocrText });
     } catch (err) {
       console.error("[ONNX Worker] Error during inference:", err);
-      self.postMessage({ type: 'inferenceResult', classification: 'error', inferenceTime: "0" });
+      self.postMessage({ type: 'inferenceResult', classification: 'error', onnxInferenceTime: "0" });
     }
   }
 };
