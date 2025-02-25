@@ -9,7 +9,7 @@ self.onmessage = async (e) => {
     const { payload } = e.data;
 
     try {
-      // Create the image tensor as before.
+      // Create the image tensor.
       const imageTensor = new ort.Tensor(
         'float32',
         new Float32Array(payload.imageTensor.data),
@@ -24,7 +24,6 @@ self.onmessage = async (e) => {
       const attentionMaskBig = new BigInt64Array(payload.attention_mask);
       const attentionMaskFloat = new Float32Array(attentionMaskBig.length);
       for (let i = 0; i < attentionMaskBig.length; i++) {
-        // Convert BigInt to Number.
         attentionMaskFloat[i] = Number(attentionMaskBig[i]);
       }
       const attentionMask = new ort.Tensor('float32', attentionMaskFloat, [1, 512]);
@@ -35,8 +34,8 @@ self.onmessage = async (e) => {
         input_ids: inputIds,
         attention_mask: attentionMask
       };
-      
-      console.log("[ONNX Worker] Model input (feeds): ", feeds)
+
+      console.log("[ONNX Worker] Model input (feeds): ", feeds);
 
       if (!self.session) {
         const modelUrl = new URL('../public/models/m7_e2_960x540_512.onnx', import.meta.url).toString();

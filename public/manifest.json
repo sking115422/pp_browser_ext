@@ -7,20 +7,20 @@
     "default_title": "SEGaurd"
   },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts; script-src * 'wasm-unsafe-eval'; object-src 'self'; worker-src * blob:; child-src * blob:"
   },
   "permissions": [
+    "tts",
     "tabs",
     "activeTab",
     "scripting",
     "storage",
     "unlimitedStorage",
     "downloads",
-    "offscreen",
     "contextMenus"
   ],
   "host_permissions": ["<all_urls>"],
@@ -29,5 +29,8 @@
       "resources": ["models/*", "libs/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  }
 }
