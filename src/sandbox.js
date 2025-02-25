@@ -1,3 +1,4 @@
+// src/sandbox.js
 console.log("[Sandbox] Sandbox document loaded.");
 
 // Notify parent (popup) that the sandbox is active.
@@ -12,8 +13,8 @@ window.parent.postMessage(
     const { createScheduler, createWorker } = Tesseract;
     
     // Specify how many rows and columns you want.
-    const numRows = 3;  // Change this to the desired number of rows.
-    const numCols = 3;  // Change this to the desired number of columns.
+    const numRows = 4;  // Change this to the desired number of rows.
+    const numCols = 4;  // Change this to the desired number of columns.
     const totalPieces = numRows * numCols;
     
     // Create a scheduler and initialize as many workers as pieces.

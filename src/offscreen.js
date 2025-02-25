@@ -1,3 +1,4 @@
+// src/offscreen.js
 import * as ort from 'onnxruntime-web';
 
 console.log("[Offscreen] Offscreen document loaded.");

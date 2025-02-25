@@ -1,3 +1,4 @@
+// src/popup.js
 import { AutoTokenizer } from '@xenova/transformers';
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -1,3 +1,4 @@
+// src/onnx_worker.js
 import * as ort from 'onnxruntime-web';
 
 console.log("[ONNX Worker] Worker started.");

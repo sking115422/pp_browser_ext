@@ -1,3 +1,4 @@
+// src/background.js
 let captureStartTime = 0;
 let totalTime = 0;
 
