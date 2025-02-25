@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggleButton = document.getElementById("toggleButton");
   const sandboxFrame = document.getElementById("sandboxIframe");
   const ocrTimeEl = document.getElementById('ocrTime');
+  const ssProcessingTimeEl = document.getElementById('ssProcessingTime')
+  const tokenTimeEl = document.getElementById('tokenTime')
 
   // Update the toggle button based on stored state.
   chrome.storage.local.get("toggleState", (data) => {
@@ -133,13 +135,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (sandboxFrame && sandboxFrame.contentWindow) {
         sandboxFrame.contentWindow.postMessage({ type: 'screenshotCaptured', dataUrl: message.dataUrl }, "*");
       }
+
       // Process the image locally to create the image tensor.
+      const startSsProcessing = performance.now();
       processImage(message.dataUrl)
         .then(result => {
           window.processedImage = result;
           console.log("[Popup] Image processing complete.");
         })
         .catch(err => console.error("[Popup] Error processing image:", err));
+       const endSsProcessing = performance.now();
+       const ssProcessingTime = endSsProcessing-startSsProcessing;
+       if (ssProcessingTimeEl) ssProcessingTimeEl.textContent = ssProcessingTime + " ms"
     }
     
     if (message.type === 'inferenceResult') {
@@ -185,11 +192,17 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("[Popup] Tokenizer not loaded yet.");
         return;
       }
+      
+      const startTokenTime = performance.now()
       const tokenized = await tokenizer(data.text, {
         truncation: true,
         padding: 'max_length',
         max_length: 512,
       });
+      const endTokenTime = performance.now()
+      const tokenTime = endTokenTime - startTokenTime;
+      if (tokenTimeEl) tokenTimeEl.textContent = tokenTime + " ms"
+
       const payload = {
         imageTensor: {
           // Convert the Float32Array into a regular array.
