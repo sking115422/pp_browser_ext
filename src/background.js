@@ -1,9 +1,30 @@
-// src/background.js
-
 let captureStartTime = 0;
 let totalTime = 0;
 
-// Function to capture a screenshot and send it to the popup
+async function ensureOffscreen() {
+  if (!chrome.offscreen) {
+    console.warn("chrome.offscreen API is not available. Offscreen inference will not work!");
+    return false;
+  }
+  try {
+    const hasDocument = await chrome.offscreen.hasDocument();
+    if (!hasDocument) {
+      await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['WORKERS'],
+        justification: 'Needed to run ONNX inference'
+      });
+      console.log("[Background] Offscreen document created.");
+    } else {
+      console.log("[Background] Offscreen document already exists.");
+    }
+    return true;
+  } catch (err) {
+    console.error("Error ensuring offscreen document:", err);
+    return false;
+  }
+}
+
 function captureScreenshotAndSend() {
   console.log("[Background] Attempting to capture screenshot...");
   chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
@@ -12,7 +33,7 @@ function captureScreenshotAndSend() {
       return;
     }
     console.log("[Background] Screenshot captured. Sending to popup.");
-    // Send the screenshot via message passing
+    captureStartTime = performance.now();
     chrome.runtime.sendMessage({ type: 'screenshotCaptured', dataUrl });
   });
 }
@@ -21,8 +42,6 @@ setInterval(() => {
   chrome.storage.local.get("toggleState", (data) => {
     if (data.toggleState) {
       console.log("[Background] Toggle is ON. Capturing screenshot...");
-      // Record the start time
-      captureStartTime = performance.now();
       captureScreenshotAndSend();
     } else {
       console.log("[Background] Toggle is OFF; skipping capture.");
@@ -30,19 +49,32 @@ setInterval(() => {
   });
 }, 10000);
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  console.log("[Background] Message received:", message);
+
   if (message.type === "inferenceFinished" && message.data === true) {
-    // Calculate the total time from capture start until inference finished
     totalTime = performance.now() - captureStartTime;
     chrome.runtime.sendMessage({ type: "totalTime", data: totalTime });
     console.log("[Background] Total time for capture and inference:", totalTime, "ms");
   }
-});
 
-// Optional: listen for sandbox loaded confirmation forwarded via the popup
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'sandboxLoaded') {
-    console.log("[Background] Received sandboxLoaded confirmation:", msg);
+  if (message.type === "runInference") {
+    console.log("[Background] Received runInference message.");
+    const available = await ensureOffscreen();
+    if (available) {
+      console.log("[Background] Forwarding runInference payload to offscreen document.");
+      chrome.runtime.sendMessage(message);
+    } else {
+      console.error("Offscreen document not available. Cannot perform inference.");
+    }
+  }
+
+  if (message.type === 'sandboxLoaded') {
+    console.log("[Background] Received sandboxLoaded confirmation:", message);
+  }
+
+  if (message.type === "inferenceResult") {
+    console.log("[Background] Received inference result:", message);
+    chrome.runtime.sendMessage(message);
   }
 });
-

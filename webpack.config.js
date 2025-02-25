@@ -7,7 +7,8 @@ module.exports = {
     popup: "./src/popup.js",
     background: "./src/background.js",
     sandbox: "./src/sandbox.js",
-    onnx_worker: "./src/onnx_worker.js"
+    onnx_worker: "./src/onnx_worker.js",
+    offscreen: "./src/offscreen.js"
   },
   output: {
     path: path.resolve(__dirname, "dist"),
