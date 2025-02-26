@@ -2,14 +2,14 @@
 import { AutoTokenizer } from '@xenova/transformers';
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[Popup] Popup loaded.");
+  console.log("[Popup] - " + Date.now() + " - Popup loaded.");
   const screenshotEl = document.getElementById("screenshot");
   const ocrTextEl = document.getElementById("ocrText");
   const classificationEl = document.getElementById("classification");
   const onnxInferenceTimeEl = document.getElementById("onnxInferenceTime");
   const totalTimeEl = document.getElementById("totalTime");
   const toggleButton = document.getElementById("toggleButton");
-  const sandboxFrame = document.getElementById("sandboxIframe");
+  const sandboxIframe = document.getElementById("sandboxIframe");
   const ocrTimeEl = document.getElementById('ocrTime');
   const ssProcessingTimeEl = document.getElementById('ssProcessingTime')
   const tokenTimeEl = document.getElementById('tokenTime')
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const newState = !data.toggleState;
       chrome.storage.local.set({ toggleState: newState }, () => {
         updateToggleButton(newState);
-        console.log("[Popup] Toggle state updated:", newState);
+        console.log("[Popup] - " + Date.now() + " - Toggle state updated:", newState);
       });
     });
   });
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateToggleButton(isOn) {
     toggleButton.textContent = isOn ? "ON" : "OFF";
     toggleButton.className = isOn ? "on" : "off";
-    console.log("[Popup] Toggle button updated:", isOn);
+    console.log("[Popup] - " + Date.now() + " - Toggle button updated:", isOn);
   }
 
   // Load the tokenizer.
@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   AutoTokenizer.from_pretrained('bert_mini_tokenizer')
     .then(tknzr => {
       tokenizer = tknzr;
-      console.log("[Popup] Tokenizer loaded.");
+      console.log("[Popup] - " + Date.now() + " - Tokenizer loaded.");
     })
     .catch(err => console.error("[Popup] Error loading tokenizer:", err));
 
@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const IMG_SCALE_FACTOR = 0.5;
       const img = new Image();
       img.onload = () => {
-        console.log("[Popup] Image loaded for processing.");
+        console.log("[Popup] - " + Date.now() + " - Image loaded for processing.");
         const origWidth = img.naturalWidth;
         const origHeight = img.naturalHeight;
         const targetLongest = Math.max(IMG_SIZE.width, IMG_SIZE.height);
@@ -128,30 +128,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Listen for messages from the background.
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("[Popup] Message received from background:", message);
+    console.log("[Popup] - " + Date.now() + " - Message received from background:", message);
     if (message.type === 'screenshotCaptured' && message.dataUrl) {
       if (screenshotEl) screenshotEl.src = message.dataUrl;
       // Forward the screenshot to the sandbox for OCR.
-      if (sandboxFrame && sandboxFrame.contentWindow) {
-        sandboxFrame.contentWindow.postMessage({ type: 'screenshotCaptured', dataUrl: message.dataUrl }, "*");
+      if (sandboxIframe && sandboxIframe.contentWindow) {
+        sandboxIframe.contentWindow.postMessage({ type: 'screenshotCaptured', dataUrl: message.dataUrl }, "*");
       }
 
       // Process the image locally to create the image tensor.
-      const startSsProcessing = performance.now();
+      const startSsProcessing = Date.now();
       processImage(message.dataUrl)
         .then(result => {
           window.processedImage = result;
-          console.log("[Popup] Image processing complete.");
+          console.log("[Popup] - " + Date.now() + " - Image processing complete.");
         })
         .catch(err => console.error("[Popup] Error processing image:", err));
-       const endSsProcessing = performance.now();
+       const endSsProcessing = Date.now();
        const ssProcessingTime = endSsProcessing-startSsProcessing;
-       console.log('[Popup] Screenshot processing time: ' + ssProcessingTime + ' ms')
+       console.log("[Popup] - " + Date.now() + " - Screenshot processing time: " + ssProcessingTime + ' ms')
       //  if (ssProcessingTimeEl) ssProcessingTimeEl.textContent = ssProcessingTime + " ms"
     }
     
     if (message.type === 'inferenceResult') {
-      console.log("[Popup] Inference result received:", message);
+      console.log("[Popup] - " + Date.now() + " - Inference result received:", message);
       if (classificationEl) classificationEl.textContent = message.classification;
       if (onnxInferenceTimeEl) onnxInferenceTimeEl.textContent = message.onnxInferenceTime + " ms";
       // if (ocrTextEl) ocrTextEl.textContent = message.ocrText;
@@ -160,22 +160,22 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (message.type === 'totalTime') {
       if (totalTimeEl) totalTimeEl.textContent = message.data + " ms";
-      console.log("[Popup] Total time updated:", message.data);
+      console.log("[Popup] - " + Date.now() + " - Total time updated:", message.data);
     }
   });
 
   // Listen for messages from the sandbox (OCR result).
   window.addEventListener("message", async (event) => {
-    console.log("[Popup] Message received from sandbox:", event.data);
+    console.log("[Popup] - " + Date.now() + " - Message received from sandbox:", event.data);
 
     const data = event.data;
 
     if (data.type === 'sandboxLoaded') {
-      console.log("[Popup] Sandbox loaded:", data.message);
+      console.log("[Popup] - " + Date.now() + " - Sandbox loaded:", data.message);
       chrome.runtime.sendMessage(data);
     }
     if (data.type === 'ocrResult' && data.text) {
-      console.log("[Popup] OCR result received from sandbox:", data.text);
+      console.log("[Popup] - " + Date.now() + " - OCR result received from sandbox:", data.text);
 
       if (ocrTimeEl && data.ocrTime) {
         ocrTimeEl.textContent = data.ocrTime.toFixed(2) + " ms";
@@ -183,6 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (ocrTextEl && data.text) {
         ocrTextEl.textContent = data.text;
       }
+
+      chrome.runtime.sendMessage({type: "ocrFinished"})
       
       const processed = window.processedImage;
       if (!processed) {
@@ -194,15 +196,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       
-      const startTokenTime = performance.now()
+      const startTokenTime = Date.now()
       const tokenized = await tokenizer(data.text, {
         truncation: true,
         padding: 'max_length',
         max_length: 512,
       });
-      const endTokenTime = performance.now()
+      const endTokenTime = Date.now()
       const tokenTime = endTokenTime - startTokenTime;
-      console.log('[Popup] Time to tokenize OCR text: ' + tokenTime + ' ms')
+      console.log("[Popup] - " + Date.now() + " - Time to tokenize OCR text: " + tokenTime + ' ms')
       // if (tokenTimeEl) tokenTimeEl.textContent = tokenTime + " ms"
 
       const payload = {
@@ -218,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ocrText: data.text
       };
       
-      console.log("[Popup] Sending runInference message to background with payload:", payload);
+      console.log("[Popup] - " + Date.now() + " - Sending runInference message to background with payload:", payload);
       chrome.runtime.sendMessage({ type: 'runInference', payload });
     }
   });

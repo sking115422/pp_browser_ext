@@ -1,5 +1,6 @@
 // src/background.js
-let captureStartTime = 0;
+let ocrFinised = 0;
+let totalStartTime = 0;
 let totalTime = 0;
 
 async function ensureOffscreen() {
@@ -15,9 +16,9 @@ async function ensureOffscreen() {
         reasons: ['WORKERS'],
         justification: 'Needed to run ONNX inference'
       });
-      console.log("[Background] Offscreen document created.");
+      console.log("[Background] - " + Date.now() + " - Offscreen document created.");
     } else {
-      console.log("[Background] Offscreen document already exists.");
+      console.log("[Background]- " + Date.now() + " - Offscreen document already exists.");
     }
     return true;
   } catch (err) {
@@ -27,14 +28,13 @@ async function ensureOffscreen() {
 }
 
 function captureScreenshotAndSend() {
-  console.log("[Background] Attempting to capture screenshot...");
+  console.log("[Background] - " + Date.now() + " - Attempting to capture screenshot...");
   chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
     if (chrome.runtime.lastError || !dataUrl) {
       console.error("[Background] Error capturing screenshot:", chrome.runtime.lastError);
       return;
     }
-    console.log("[Background] Screenshot captured. Sending to popup.");
-    captureStartTime = performance.now();
+    console.log("[Background] - " + Date.now() + " - Screenshot captured. Sending to popup.");
     chrome.runtime.sendMessage({ type: 'screenshotCaptured', dataUrl });
   });
 }
@@ -42,32 +42,40 @@ function captureScreenshotAndSend() {
 setInterval(() => {
   chrome.storage.local.get("toggleState", (data) => {
     if (data.toggleState) {
-      console.log("[Background] Toggle is ON. Capturing screenshot...");
-      const startTakeSsTime = performance.now()
+      console.log("[Background] - " + Date.now() + " - Toggle is ON. Capturing screenshot...");
+      const startTakeSsTime = Date.now()
+      totalStartTime = startTakeSsTime
       captureScreenshotAndSend();
-      const endTakeSsTime = performance.now()
+      const endTakeSsTime = Date.now()
       const takeSsTime = endTakeSsTime - startTakeSsTime;
-      console.log('[Background] Time to take screenshot: ' + takeSsTime + " ms")
+      console.log("[Background] - " + Date.now() + " - Time to take screenshot: " + takeSsTime + " ms")
     } else {
-      console.log("[Background] Toggle is OFF; skipping capture.");
+      console.log("[Background] - " + Date.now() + " - Toggle is OFF; skipping capture.");
     }
   });
 }, 10000);
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  console.log("[Background] Message received:", message);
+  console.log("[Background] - " + Date.now() + " - Message received:", message);
+
+  if (message.type === "ocrFinished") {
+    ocrFinised = Date.now()
+    ocrFullTime = ocrFinised - totalStartTime
+    
+    console.log("[Background] - " + Date.now() + " - SS capture to OCR finish time: " + ocrFullTime + ' ms')
+  }
 
   if (message.type === "inferenceFinished" && message.data === true) {
-    totalTime = performance.now() - captureStartTime;
+    totalTime = Date.now() - totalStartTime;
     chrome.runtime.sendMessage({ type: "totalTime", data: totalTime });
-    console.log("[Background] Total time for capture and inference:", totalTime, "ms");
+    console.log("[Background] - " + Date.now() + " - Total time for capture and inference:", totalTime, "ms");
   }
 
   if (message.type === "runInference") {
-    console.log("[Background] Received runInference message.");
+    console.log("[Background] - " + Date.now() + " - Received runInference message.");
     const available = await ensureOffscreen();
     if (available) {
-      console.log("[Background] Forwarding runInference payload to offscreen document.");
+      console.log("[Background] - " + Date.now() + " - Forwarding runInference payload to offscreen document.");
       chrome.runtime.sendMessage(message);
     } else {
       console.error("Offscreen document not available. Cannot perform inference.");
@@ -75,11 +83,11 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 
   if (message.type === 'sandboxLoaded') {
-    console.log("[Background] Received sandboxLoaded confirmation:", message);
+    console.log("[Background] - " + Date.now() + " - Received sandboxLoaded confirmation:", message);
   }
 
   if (message.type === "inferenceResult") {
-    console.log("[Background] Received inference result:", message);
+    console.log("[Background] - " + Date.now() + " - Received inference result:", message);
     chrome.runtime.sendMessage(message);
   }
 });

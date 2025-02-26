@@ -1,5 +1,5 @@
 // src/sandbox.js
-console.log("[Sandbox] Sandbox document loaded.");
+console.log("[Sandbox] - " + Date.now() + " - Sandbox document loaded.");
 
 // Notify parent (popup) that the sandbox is active.
 window.parent.postMessage(
@@ -9,12 +9,12 @@ window.parent.postMessage(
 
 (async () => {
   try {
-    console.log("[Sandbox] Initializing Tesseract scheduler with dynamic grid workers");
+    console.log("[Sandbox] - " + Date.now() + " - Initializing Tesseract scheduler with dynamic grid workers");
     const { createScheduler, createWorker } = Tesseract;
     
     // Specify how many rows and columns you want.
-    const numRows = 4;  // Change this to the desired number of rows.
-    const numCols = 4;  // Change this to the desired number of columns.
+    const numRows = 3;  // Change this to the desired number of rows.
+    const numCols = 5;  // Change this to the desired number of columns.
     const totalPieces = numRows * numCols;
     
     // Create a scheduler and initialize as many workers as pieces.
@@ -23,13 +23,15 @@ window.parent.postMessage(
       const worker = await createWorker('eng');
       scheduler.addWorker(worker);
     }
-    console.log(`[Sandbox] Scheduler initialized with ${totalPieces} workers.`);
+    console.log(`[Sandbox] Scheduler - ${Date.now()} - initialized with ${totalPieces} workers.`);
     
     // Listen for screenshot messages from the parent.
     window.addEventListener("message", async (event) => {
       const message = event.data;
       if (message.type === 'screenshotCaptured' && message.dataUrl) {
-        console.log("[Sandbox] Received screenshot for OCR.");
+        console.log("[Sandbox] - " + Date.now() + " - Received screenshot for OCR.");
+
+        const startTime = Date.now();
         
         // Create an image to determine its dimensions.
         const img = new Image();
@@ -37,7 +39,7 @@ window.parent.postMessage(
         img.onload = async () => {
           const width = img.naturalWidth;
           const height = img.naturalHeight;
-          console.log("[Sandbox] Image dimensions:", width, height);
+          console.log("[Sandbox] - " + Date.now() + " - Image dimensions:", width, height);
           
           // Calculate piece dimensions.
           const pieceWidth = Math.floor(width / numCols);
@@ -55,9 +57,7 @@ window.parent.postMessage(
               jobs.push({ row, col, rectangle: { left, top, width: rectWidth, height: rectHeight } });
             }
           }
-          console.log("[Sandbox] Defined job rectangles:", jobs);
-          
-          const startTime = performance.now();
+          console.log("[Sandbox] - " + Date.now() + " - Defined job rectangles:", jobs);
           
           try {
             // Submit OCR jobs for each rectangle.
@@ -77,9 +77,9 @@ window.parent.postMessage(
             
             // Concatenate the text in row-major order.
             const combinedText = results.map(r => r.text).join(" ");
-            const endTime = performance.now();
+            const endTime = Date.now();
             const ocrTime = endTime - startTime;
-            console.log("[Sandbox] OCR completed for grid:", combinedText, "Time:", ocrTime, "ms");
+            console.log("[Sandbox] - " + Date.now() + " - OCR completed for grid:", combinedText, "Time:", ocrTime, "ms");
             
             // Send the combined OCR text and timing back to the parent.
             window.parent.postMessage({ type: 'ocrResult', text: combinedText, ocrTime }, "*");
