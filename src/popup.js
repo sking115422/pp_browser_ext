@@ -11,8 +11,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggleButton = document.getElementById("toggleButton");
   const sandboxFrame = document.getElementById("sandboxIframe");
   const ocrTimeEl = document.getElementById('ocrTime');
-  const ssProcessingTimeEl = document.getElementById('ssProcessingTime')
-  const tokenTimeEl = document.getElementById('tokenTime')
+  const ssProcessingTimeEl = document.getElementById('ssProcessingTime');
+  const tokenTimeEl = document.getElementById('tokenTime');
 
   // Update the toggle button based on stored state.
   chrome.storage.local.get("toggleState", (data) => {
@@ -126,56 +126,60 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Listen for messages from the background.
+  // Listen for storage changes (for screenshot data and total time).
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'session') {
+      if (changes.screenshotData) {
+        const newScreenshot = changes.screenshotData.newValue;
+        console.log("[Popup] New screenshot data available from storage.");
+        if (screenshotEl) screenshotEl.src = newScreenshot;
+        
+        // Forward the screenshot to the sandbox via message passing.
+        if (sandboxFrame && sandboxFrame.contentWindow) {
+          sandboxFrame.contentWindow.postMessage({ type: 'screenshotCaptured', dataUrl: newScreenshot }, "*");
+        }
+        
+        // Process the image locally.
+        const startSsProcessing = performance.now();
+        processImage(newScreenshot)
+          .then(result => {
+            window.processedImage = result;
+            console.log("[Popup] Image processing complete.");
+          })
+          .catch(err => console.error("[Popup] Error processing image:", err));
+        const endSsProcessing = performance.now();
+        if (ssProcessingTimeEl) ssProcessingTimeEl.textContent = (endSsProcessing - startSsProcessing) + " ms";
+      }
+      
+      if (changes.totalTime) {
+        const newTotalTime = changes.totalTime.newValue;
+        if (totalTimeEl) totalTimeEl.textContent = newTotalTime + " ms";
+        console.log("[Popup] Total time updated from storage:", newTotalTime);
+      }
+    }
+  });
+
+  // Listen for messages from the background for inference results.
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("[Popup] Message received from background:", message);
-    if (message.type === 'screenshotCaptured' && message.dataUrl) {
-      if (screenshotEl) screenshotEl.src = message.dataUrl;
-      // Forward the screenshot to the sandbox for OCR.
-      if (sandboxFrame && sandboxFrame.contentWindow) {
-        sandboxFrame.contentWindow.postMessage({ type: 'screenshotCaptured', dataUrl: message.dataUrl }, "*");
-      }
-
-      // Process the image locally to create the image tensor.
-      const startSsProcessing = performance.now();
-      processImage(message.dataUrl)
-        .then(result => {
-          window.processedImage = result;
-          console.log("[Popup] Image processing complete.");
-        })
-        .catch(err => console.error("[Popup] Error processing image:", err));
-       const endSsProcessing = performance.now();
-       const ssProcessingTime = endSsProcessing-startSsProcessing;
-       if (ssProcessingTimeEl) ssProcessingTimeEl.textContent = ssProcessingTime + " ms"
-    }
-    
     if (message.type === 'inferenceResult') {
       console.log("[Popup] Inference result received:", message);
       if (classificationEl) classificationEl.textContent = message.classification;
       if (onnxInferenceTimeEl) onnxInferenceTimeEl.textContent = message.onnxInferenceTime + " ms";
-      // if (ocrTextEl) ocrTextEl.textContent = message.ocrText;
       chrome.runtime.sendMessage({ type: "inferenceFinished", data: true });
-    }
-    
-    if (message.type === 'totalTime') {
-      if (totalTimeEl) totalTimeEl.textContent = message.data + " ms";
-      console.log("[Popup] Total time updated:", message.data);
     }
   });
 
   // Listen for messages from the sandbox (OCR result).
   window.addEventListener("message", async (event) => {
     console.log("[Popup] Message received from sandbox:", event.data);
-
     const data = event.data;
-
     if (data.type === 'sandboxLoaded') {
       console.log("[Popup] Sandbox loaded:", data.message);
       chrome.runtime.sendMessage(data);
     }
     if (data.type === 'ocrResult' && data.text) {
       console.log("[Popup] OCR result received from sandbox:", data.text);
-
       if (ocrTimeEl && data.ocrTime) {
         ocrTimeEl.textContent = data.ocrTime.toFixed(2) + " ms";
       }
@@ -193,24 +197,23 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       
-      const startTokenTime = performance.now()
+      const startTokenTime = performance.now();
       const tokenized = await tokenizer(data.text, {
         truncation: true,
         padding: 'max_length',
         max_length: 512,
       });
-      const endTokenTime = performance.now()
+      const endTokenTime = performance.now();
       const tokenTime = endTokenTime - startTokenTime;
-      if (tokenTimeEl) tokenTimeEl.textContent = tokenTime + " ms"
-
+      if (tokenTimeEl) tokenTimeEl.textContent = tokenTime + " ms";
+      
       const payload = {
         imageTensor: {
           // Convert the Float32Array into a regular array.
           data: Array.from(new Float32Array(window.processedImage.imageTensor.data)),
           dims: window.processedImage.imageTensor.dims
         },
-        // Convert the BigInt64Array to a regular array of numbers (or strings if needed)
-        // Note: BigInts don’t serialize as numbers, so you may need to convert them to strings.
+        // Convert the BigInt64Array to a regular array of strings.
         input_ids: Array.from(new BigInt64Array(tokenized.input_ids.data)).map(x => x.toString()),
         attention_mask: Array.from(new BigInt64Array(tokenized.attention_mask.data)).map(x => x.toString()),
         ocrText: data.text

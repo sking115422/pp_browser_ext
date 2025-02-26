@@ -26,16 +26,20 @@ async function ensureOffscreen() {
   }
 }
 
-function captureScreenshotAndSend() {
+function captureScreenshotAndStore() {
   console.log("[Background] Attempting to capture screenshot...");
   chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
     if (chrome.runtime.lastError || !dataUrl) {
       console.error("[Background] Error capturing screenshot:", chrome.runtime.lastError);
       return;
     }
-    console.log("[Background] Screenshot captured. Sending to popup.");
+    console.log("[Background] Screenshot captured. Storing in session storage.");
     captureStartTime = performance.now();
-    chrome.runtime.sendMessage({ type: 'screenshotCaptured', dataUrl });
+    chrome.storage.session.set({ screenshotData: dataUrl }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error storing screenshot data:", chrome.runtime.lastError);
+      }
+    });
   });
 }
 
@@ -43,7 +47,7 @@ setInterval(() => {
   chrome.storage.local.get("toggleState", (data) => {
     if (data.toggleState) {
       console.log("[Background] Toggle is ON. Capturing screenshot...");
-      captureScreenshotAndSend();
+      captureScreenshotAndStore();
     } else {
       console.log("[Background] Toggle is OFF; skipping capture.");
     }
@@ -55,7 +59,11 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
   if (message.type === "inferenceFinished" && message.data === true) {
     totalTime = performance.now() - captureStartTime;
-    chrome.runtime.sendMessage({ type: "totalTime", data: totalTime });
+    chrome.storage.session.set({ totalTime }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error storing total time:", chrome.runtime.lastError);
+      }
+    });
     console.log("[Background] Total time for capture and inference:", totalTime, "ms");
   }
 
@@ -72,6 +80,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
   if (message.type === 'sandboxLoaded') {
     console.log("[Background] Received sandboxLoaded confirmation:", message);
+    // Optionally update storage or trigger additional actions.
   }
 
   if (message.type === "inferenceResult") {

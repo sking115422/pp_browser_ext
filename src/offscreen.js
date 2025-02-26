@@ -22,7 +22,6 @@ if (!onnxWorker) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'runInference') {
     console.log("[Offscreen] Received runInference message:", message);
-
     if (onnxWorker) {
       try {
         onnxWorker.postMessage({ type: 'runInference', payload: message.payload });
