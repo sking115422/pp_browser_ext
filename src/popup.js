@@ -146,7 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .catch(err => console.error("[Popup] Error processing image:", err));
        const endSsProcessing = performance.now();
        const ssProcessingTime = endSsProcessing-startSsProcessing;
-       if (ssProcessingTimeEl) ssProcessingTimeEl.textContent = ssProcessingTime + " ms"
+       console.log('[Popup] Screenshot processing time: ' + ssProcessingTime + ' ms')
+      //  if (ssProcessingTimeEl) ssProcessingTimeEl.textContent = ssProcessingTime + " ms"
     }
     
     if (message.type === 'inferenceResult') {
@@ -201,7 +202,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const endTokenTime = performance.now()
       const tokenTime = endTokenTime - startTokenTime;
-      if (tokenTimeEl) tokenTimeEl.textContent = tokenTime + " ms"
+      console.log('[Popup] Time to tokenize OCR text: ' + tokenTime + ' ms')
+      // if (tokenTimeEl) tokenTimeEl.textContent = tokenTime + " ms"
 
       const payload = {
         imageTensor: {

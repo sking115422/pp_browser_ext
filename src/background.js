@@ -43,7 +43,11 @@ setInterval(() => {
   chrome.storage.local.get("toggleState", (data) => {
     if (data.toggleState) {
       console.log("[Background] Toggle is ON. Capturing screenshot...");
+      const startTakeSsTime = performance.now()
       captureScreenshotAndSend();
+      const endTakeSsTime = performance.now()
+      const takeSsTime = endTakeSsTime - startTakeSsTime;
+      console.log('[Background] Time to take screenshot: ' + takeSsTime + " ms")
     } else {
       console.log("[Background] Toggle is OFF; skipping capture.");
     }
