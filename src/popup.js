@@ -14,6 +14,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const ssProcessingTimeEl = document.getElementById('ssProcessingTime');
   const tokenTimeEl = document.getElementById('tokenTime');
 
+  // Establish a long-lived port connection to the background.
+  const bgPort = chrome.runtime.connect({ name: "popup" });
+  bgPort.onMessage.addListener((msg) => {
+    console.log("[Popup] Received message from background via port:", msg);
+    if (msg.type === 'inferenceResult') {
+      console.log("[Popup] Inference result received:", msg);
+      if (classificationEl) classificationEl.textContent = msg.classification;
+      if (onnxInferenceTimeEl) onnxInferenceTimeEl.textContent = msg.onnxInferenceTime + " ms";
+      // Notify background that inference is finished.
+      bgPort.postMessage({ type: "inferenceFinished", data: true });
+    }
+  });
+
   // Update the toggle button based on stored state.
   chrome.storage.local.get("toggleState", (data) => {
     updateToggleButton(data.toggleState ?? false);
@@ -159,24 +172,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Listen for messages from the background for inference results.
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("[Popup] Message received from background:", message);
-    if (message.type === 'inferenceResult') {
-      console.log("[Popup] Inference result received:", message);
-      if (classificationEl) classificationEl.textContent = message.classification;
-      if (onnxInferenceTimeEl) onnxInferenceTimeEl.textContent = message.onnxInferenceTime + " ms";
-      chrome.runtime.sendMessage({ type: "inferenceFinished", data: true });
-    }
-  });
-
   // Listen for messages from the sandbox (OCR result).
   window.addEventListener("message", async (event) => {
     console.log("[Popup] Message received from sandbox:", event.data);
     const data = event.data;
     if (data.type === 'sandboxLoaded') {
       console.log("[Popup] Sandbox loaded:", data.message);
-      chrome.runtime.sendMessage(data);
+      bgPort.postMessage(data);
     }
     if (data.type === 'ocrResult' && data.text) {
       console.log("[Popup] OCR result received from sandbox:", data.text);
@@ -213,14 +215,13 @@ document.addEventListener("DOMContentLoaded", () => {
           data: Array.from(new Float32Array(window.processedImage.imageTensor.data)),
           dims: window.processedImage.imageTensor.dims
         },
-        // Convert the BigInt64Array to a regular array of strings.
         input_ids: Array.from(new BigInt64Array(tokenized.input_ids.data)).map(x => x.toString()),
         attention_mask: Array.from(new BigInt64Array(tokenized.attention_mask.data)).map(x => x.toString()),
         ocrText: data.text
       };
       
       console.log("[Popup] Sending runInference message to background with payload:", payload);
-      chrome.runtime.sendMessage({ type: 'runInference', payload });
+      bgPort.postMessage({ type: 'runInference', payload });
     }
   });
 });

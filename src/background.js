@@ -1,6 +1,8 @@
 // src/background.js
 let captureStartTime = 0;
 let totalTime = 0;
+let popupPort = null;
+let offscreenPort = null;
 
 async function ensureOffscreen() {
   if (!chrome.offscreen) {
@@ -35,11 +37,7 @@ function captureScreenshotAndStore() {
     }
     console.log("[Background] Screenshot captured. Storing in session storage.");
     captureStartTime = performance.now();
-    chrome.storage.session.set({ screenshotData: dataUrl }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error storing screenshot data:", chrome.runtime.lastError);
-      }
-    });
+    chrome.storage.session.set({ screenshotData: dataUrl });
   });
 }
 
@@ -54,37 +52,57 @@ setInterval(() => {
   });
 }, 10000);
 
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  console.log("[Background] Message received:", message);
-
-  if (message.type === "inferenceFinished" && message.data === true) {
-    totalTime = performance.now() - captureStartTime;
-    chrome.storage.session.set({ totalTime }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error storing total time:", chrome.runtime.lastError);
+// Listen for incoming long-lived port connections.
+chrome.runtime.onConnect.addListener((port) => {
+  console.log("[Background] Port connected:", port.name);
+  if (port.name === "popup") {
+    popupPort = port;
+    port.onMessage.addListener((msg) => {
+      console.log("[Background] Received message from popup via port:", msg);
+      if (msg.type === "runInference") {
+        (async () => {
+          const available = await ensureOffscreen();
+          if (available) {
+            if (offscreenPort) {
+              offscreenPort.postMessage(msg);
+            } else {
+              // Fallback: if the offscreen port is not connected, use one‑time messaging.
+              chrome.runtime.sendMessage(msg);
+            }
+          } else {
+            console.error("Offscreen document not available. Cannot perform inference.");
+          }
+        })();
+      }
+      if (msg.type === "inferenceFinished" && msg.data === true) {
+        totalTime = performance.now() - captureStartTime;
+        chrome.storage.session.set({ totalTime });
+        console.log("[Background] Total time for capture and inference:", totalTime, "ms");
+      }
+      if (msg.type === "sandboxLoaded") {
+        console.log("[Background] Received sandboxLoaded confirmation from popup:", msg);
       }
     });
-    console.log("[Background] Total time for capture and inference:", totalTime, "ms");
-  }
-
-  if (message.type === "runInference") {
-    console.log("[Background] Received runInference message.");
-    const available = await ensureOffscreen();
-    if (available) {
-      console.log("[Background] Forwarding runInference payload to offscreen document.");
-      chrome.runtime.sendMessage(message);
-    } else {
-      console.error("Offscreen document not available. Cannot perform inference.");
-    }
-  }
-
-  if (message.type === 'sandboxLoaded') {
-    console.log("[Background] Received sandboxLoaded confirmation:", message);
-    // Optionally update storage or trigger additional actions.
-  }
-
-  if (message.type === "inferenceResult") {
-    console.log("[Background] Received inference result:", message);
-    chrome.runtime.sendMessage(message);
+    port.onDisconnect.addListener(() => {
+      console.log("[Background] Popup port disconnected.");
+      popupPort = null;
+    });
+  } else if (port.name === "offscreen") {
+    offscreenPort = port;
+    port.onMessage.addListener((msg) => {
+      console.log("[Background] Received message from offscreen via port:", msg);
+      if (msg.type === "inferenceResult") {
+        // Forward the inference result to the popup.
+        if (popupPort) {
+          popupPort.postMessage(msg);
+        } else {
+          chrome.runtime.sendMessage(msg);
+        }
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      console.log("[Background] Offscreen port disconnected.");
+      offscreenPort = null;
+    });
   }
 });

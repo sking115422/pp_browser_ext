@@ -19,12 +19,14 @@ if (!onnxWorker) {
   };
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'runInference') {
-    console.log("[Offscreen] Received runInference message:", message);
+// Establish a long-lived port connection to the background.
+const bgPort = chrome.runtime.connect({ name: "offscreen" });
+bgPort.onMessage.addListener((msg) => {
+  console.log("[Offscreen] Received message via port:", msg);
+  if (msg.type === 'runInference') {
     if (onnxWorker) {
       try {
-        onnxWorker.postMessage({ type: 'runInference', payload: message.payload });
+        onnxWorker.postMessage({ type: 'runInference', payload: msg.payload });
         console.log("[Offscreen] runInference payload posted to ONNX worker.");
       } catch (e) {
         console.error("[Offscreen] Error posting message to ONNX worker:", e);
@@ -38,6 +40,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 if (onnxWorker) {
   onnxWorker.onmessage = (event) => {
     console.log("[Offscreen] Inference result from ONNX worker:", event.data);
-    chrome.runtime.sendMessage(event.data);
+    bgPort.postMessage(event.data);
   };
 }
