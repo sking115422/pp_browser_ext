@@ -42,3 +42,25 @@ if (onnxWorker) {
     chrome.runtime.sendMessage(event.data);
   };
 }
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////
+
+// Open a long-lived offscreenPort to the background script
+const offscreenPort = chrome.runtime.connect({ name: "offscreen" });
+
+// Listen for messages from background.js
+offscreenPort.onMessage.addListener((message) => {
+    console.log("Received from background:", message);
+});
+
+setInterval(() => {
+  console.log("Sending message to background...");
+  offscreenPort.postMessage({ greeting: "Hello from offscreen!" });
+}, 6000);

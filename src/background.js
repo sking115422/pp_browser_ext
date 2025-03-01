@@ -53,7 +53,7 @@ setInterval(() => {
       console.log("[Background] - " + Date.now() + " - Toggle is OFF; skipping capture.");
     }
   });
-}, 10000);
+}, 1000000);
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   console.log("[Background] - " + Date.now() + " - Message received:", message);
@@ -90,4 +90,27 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     console.log("[Background] - " + Date.now() + " - Received inference result:", message);
     chrome.runtime.sendMessage(message);
   }
+});
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////
+
+ensureOffscreen()
+
+chrome.runtime.onConnect.addListener((port) => {
+  console.log("Port connected:", port.name);
+
+  port.onMessage.addListener((message) => {
+      console.log("Received message:", message.greeting);
+      
+      // Respond to popup
+      port.postMessage({ reply: "Hello from background!" });
+  });
+
+  port.onDisconnect.addListener(() => {
+      console.log("Port disconnected:", port.name);
+  });
 });

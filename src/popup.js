@@ -225,3 +225,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+
+
+
+
+///////////////////////////////////////////////////////////////////
+
+// Open a long-lived popupPort to the background script
+const popupPort = chrome.runtime.connect({ name: "popup" });
+
+// Listen for messages from background.js
+popupPort.onMessage.addListener((message) => {
+    console.log("Received from background:", message);
+});
+
+setInterval(() => {
+  console.log("Sending message to background...");
+  popupPort.postMessage({ greeting: "Hello from popup!" });
+}, 3000);
+
+
