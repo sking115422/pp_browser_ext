@@ -1,10 +1,10 @@
 // src/onnx_worker.js
 import * as ort from 'onnxruntime-web';
 
-console.log("[ONNX Worker] - " + Date.now() + " - Worker started.");
+console.log('[ONNX Worker] - ' + Date.now() + ' - Worker started.');
 
 self.onmessage = async (e) => {
-  console.log("[ONNX Worker] - " + Date.now() + " - Message received:", e.data);
+  console.log('[ONNX Worker] - ' + Date.now() + ' - Message received:', e.data);
   if (e.data.type === 'runInference') {
     const { payload } = e.data;
     try {
@@ -12,30 +12,47 @@ self.onmessage = async (e) => {
       const imageTensor = new ort.Tensor(
         'float32',
         new Float32Array(payload.imageTensor.data),
-        payload.imageTensor.dims
+        payload.imageTensor.dims,
       );
-      const inputIdsArray = new BigInt64Array(payload.input_ids.map(x => BigInt(x)));
+      const inputIdsArray = new BigInt64Array(
+        payload.input_ids.map((x) => BigInt(x)),
+      );
       const inputIds = new ort.Tensor('int64', inputIdsArray, [1, 512]);
-      const attentionMaskBig = new BigInt64Array(payload.attention_mask.map(x => BigInt(x)));
+      const attentionMaskBig = new BigInt64Array(
+        payload.attention_mask.map((x) => BigInt(x)),
+      );
       const attentionMaskFloat = new Float32Array(attentionMaskBig.length);
       for (let i = 0; i < attentionMaskBig.length; i++) {
         attentionMaskFloat[i] = Number(attentionMaskBig[i]);
       }
-      const attentionMask = new ort.Tensor('float32', attentionMaskFloat, [1, 512]);
+      const attentionMask = new ort.Tensor(
+        'float32',
+        attentionMaskFloat,
+        [1, 512],
+      );
       const feeds = {
         image: imageTensor,
         input_ids: inputIds,
-        attention_mask: attentionMask
+        attention_mask: attentionMask,
       };
-      console.log("[ONNX Worker] - " + Date.now() + " - Model input (feeds):", feeds);
+      console.log(
+        '[ONNX Worker] - ' + Date.now() + ' - Model input (feeds):',
+        feeds,
+      );
       if (!self.session) {
-        const modelUrl = new URL('../public/models/m7_e2_960x540_512.onnx', import.meta.url).toString();
-        console.log("[ONNX Worker] - " + Date.now() + " - Loading model from:", modelUrl);
+        const modelUrl = new URL(
+          '../public/models/m7_e2_960x540_512.onnx',
+          import.meta.url,
+        ).toString();
+        console.log(
+          '[ONNX Worker] - ' + Date.now() + ' - Loading model from:',
+          modelUrl,
+        );
         self.session = await ort.InferenceSession.create(modelUrl);
-        console.log("[ONNX Worker] - " + Date.now() + " - Model loaded.");
+        console.log('[ONNX Worker] - ' + Date.now() + ' - Model loaded.');
       }
       const session = self.session;
-      console.log("[ONNX Worker] - " + Date.now() + " - Running inference...");
+      console.log('[ONNX Worker] - ' + Date.now() + ' - Running inference...');
       const start = Date.now();
       const output = await session.run(feeds);
       const onnxInferenceTime = Date.now() - start;
@@ -44,11 +61,27 @@ self.onmessage = async (e) => {
         const logits = output.output.data;
         classification = logits[1] > logits[0] ? 'SE' : 'benign';
       }
-      console.log("[ONNX Worker] - " + Date.now() + " - Inference complete. Classification:", classification, "Time:", onnxInferenceTime);
-      self.postMessage({ type: 'inferenceResult', classification, onnxInferenceTime: onnxInferenceTime.toFixed(2), ocrText: payload.ocrText });
+      console.log(
+        '[ONNX Worker] - ' +
+          Date.now() +
+          ' - Inference complete. Classification:',
+        classification,
+        'Time:',
+        onnxInferenceTime,
+      );
+      self.postMessage({
+        type: 'inferenceResult',
+        classification,
+        onnxInferenceTime: onnxInferenceTime.toFixed(2),
+        ocrText: payload.ocrText,
+      });
     } catch (err) {
-      console.error("[ONNX Worker] Error during inference:", err);
-      self.postMessage({ type: 'inferenceResult', classification: 'error', onnxInferenceTime: "0" });
+      console.error('[ONNX Worker] Error during inference:', err);
+      self.postMessage({
+        type: 'inferenceResult',
+        classification: 'error',
+        onnxInferenceTime: '0',
+      });
     }
   }
 };
