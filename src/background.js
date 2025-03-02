@@ -1,19 +1,44 @@
 // src/background.js
 
 // Global variables
-let ocrFinised = 0;
 let totalStartTime = 0;
-let totalTime = 0;
-
 let offscreenPort = null;
 
-// Initializing message passing ports
-
+// Setting up message passing ports
 chrome.runtime.onConnect.addListener((port) => {
   console.log('[Background] - ' + Date.now() + ' - Connected to:', port.name);
 
   if (port.name === 'offscreenPort') {
     offscreenPort = port;
+
+    port.onMessage.addListener((message) => {
+      if (message.type === 'infResponse') {
+        console.log(
+          '[Background] - ' + Date.now() + ' - Received infResponse:',
+          message.data,
+        );
+
+        const totalTime = Date.now() - totalStartTime;
+        // Create an object with the values you want to store.
+        const sessionData = {
+          resizedDataUrl: message.data.resizedDataUrl, // For the screenshot <img>
+          classification: message.data.classification,
+          infTime: message.data.infTime,
+          ocrText: message.data.ocrText,
+          ocrTime: message.data.ocrTime,
+          totalTime: totalTime,
+        };
+
+        // Store the values in chrome.storage.session
+        chrome.storage.session.set(sessionData, () => {
+          console.log(
+            '[Background] - ' +
+              Date.now() +
+              ' - Session storage updated with infResponse',
+          );
+        });
+      }
+    });
 
     port.onDisconnect.addListener(() => {
       console.log('[Background] - ' + Date.now() + ' - Popup disconnected.');

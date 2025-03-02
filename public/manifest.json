@@ -32,7 +32,13 @@
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
-      "resources": ["onnx_worker.js", "offscreen.html", "offscreen.js", "models/*", "libs/*"],
+      "resources": [
+        "onnx_worker.js",
+        "offscreen.html",
+        "offscreen.js",
+        "models/*",
+        "libs/*"
+      ],
       "matches": ["<all_urls>"]
     }
   ],

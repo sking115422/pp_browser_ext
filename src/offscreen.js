@@ -226,6 +226,16 @@ document.addEventListener('DOMContentLoaded', () => {
       '[Offscreen] - ' + Date.now() + ' - Inference result from ONNX worker:',
       inferenceResponse,
     );
+
+    let resizedDataUrl = ssDataProcessed.resizedDataUrl;
+    let classification = inferenceResponse.classification;
+    let infTime = inferenceResponse.onnxInferenceTime;
+    let ocrText = ocrResponse.text;
+    let ocrTime = ocrResponse.ocrTime;
+
+    let data = { resizedDataUrl, classification, infTime, ocrText, ocrTime };
+
+    offscreenPort.postMessage({ type: 'infResponse', data });
   }
 
   // Listen for messages from background.js
