@@ -34,7 +34,7 @@ window.parent.postMessage(
     // Listen for screenshot messages from the parent.
     window.addEventListener('message', async (event) => {
       const message = event.data;
-      if (message.type === 'screenshotCaptured' && message.dataUrl) {
+      if (message.type === 'ssDataUrlRaw' && message.dataUrl) {
         console.log(
           '[Sandbox] - ' + Date.now() + ' - Received screenshot for OCR.',
         );
@@ -114,9 +114,11 @@ window.parent.postMessage(
               'ms',
             );
 
-            // Send the combined OCR text and timing back to the parent.
             window.parent.postMessage(
-              { type: 'ocrResult', text: combinedText, ocrTime },
+              {
+                messageId: event.data.messageId, // Pass along the received messageId
+                response: { text: combinedText, ocrTime },
+              },
               '*',
             );
           } catch (jobError) {

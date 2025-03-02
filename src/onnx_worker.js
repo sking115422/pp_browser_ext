@@ -8,37 +8,41 @@ self.onmessage = async (e) => {
   if (e.data.type === 'runInference') {
     const { payload } = e.data;
     try {
-      // Re-create typed arrays from plain arrays.
+      // Re-create the image tensor from the transferred ArrayBuffer.
       const imageTensor = new ort.Tensor(
         'float32',
         new Float32Array(payload.imageTensor.data),
         payload.imageTensor.dims,
       );
-      const inputIdsArray = new BigInt64Array(
-        payload.input_ids.map((x) => BigInt(x)),
-      );
+
+      // Re-create the input_ids as a BigInt64Array from the transferred ArrayBuffer.
+      const inputIdsArray = new BigInt64Array(payload.input_ids);
       const inputIds = new ort.Tensor('int64', inputIdsArray, [1, 512]);
-      const attentionMaskBig = new BigInt64Array(
-        payload.attention_mask.map((x) => BigInt(x)),
-      );
-      const attentionMaskFloat = new Float32Array(attentionMaskBig.length);
-      for (let i = 0; i < attentionMaskBig.length; i++) {
-        attentionMaskFloat[i] = Number(attentionMaskBig[i]);
+
+      // Re-create the attention_mask as a BigInt64Array, then convert it to a Float32Array.
+      const attentionMaskArray = new BigInt64Array(payload.attention_mask);
+      const attentionMaskFloat = new Float32Array(attentionMaskArray.length);
+      for (let i = 0; i < attentionMaskArray.length; i++) {
+        attentionMaskFloat[i] = Number(attentionMaskArray[i]);
       }
       const attentionMask = new ort.Tensor(
         'float32',
         attentionMaskFloat,
         [1, 512],
       );
+
       const feeds = {
         image: imageTensor,
         input_ids: inputIds,
         attention_mask: attentionMask,
       };
+
       console.log(
         '[ONNX Worker] - ' + Date.now() + ' - Model input (feeds):',
         feeds,
       );
+
+      // Lazy load the model session.
       if (!self.session) {
         const modelUrl = new URL(
           '../public/models/m7_e2_960x540_512.onnx',
@@ -69,11 +73,11 @@ self.onmessage = async (e) => {
         'Time:',
         onnxInferenceTime,
       );
+      // Post the inference result back.
       self.postMessage({
         type: 'inferenceResult',
         classification,
         onnxInferenceTime: onnxInferenceTime.toFixed(2),
-        ocrText: payload.ocrText,
       });
     } catch (err) {
       console.error('[ONNX Worker] Error during inference:', err);
