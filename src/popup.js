@@ -12,8 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const totalTimeEl = document.getElementById('totalTime');
   const toggleButton = document.getElementById('toggleButton');
   const ocrTimeEl = document.getElementById('ocrTime');
-  const ssProcessingTimeEl = document.getElementById('ssProcessingTime');
-  const tokenTimeEl = document.getElementById('tokenTime');
 
   // Update the toggle button based on stored state.
   chrome.storage.local.get('toggleState', (data) => {
