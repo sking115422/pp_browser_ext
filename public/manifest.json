@@ -36,6 +36,7 @@
         "onnx_worker.js",
         "offscreen.html",
         "offscreen.js",
+        "content.js",
         "models/*",
         "libs/*"
       ],

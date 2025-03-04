@@ -1,19 +1,20 @@
-const path = require("path");
-const CopyPlugin = require("copy-webpack-plugin");
+const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  mode: "development", // or "production" when ready
+  mode: 'development', // or "production" when ready
   entry: {
-    popup: "./src/popup.js",
-    background: "./src/background.js",
-    sandbox: "./src/sandbox.js",
-    onnx_worker: "./src/onnx_worker.js",
-    offscreen: "./src/offscreen.js"
+    popup: './src/popup.js',
+    background: './src/background.js',
+    sandbox: './src/sandbox.js',
+    onnx_worker: './src/onnx_worker.js',
+    offscreen: './src/offscreen.js',
+    content: './src/content.js',
   },
   output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "[name].js",
-    library: { type: "module" }
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].js',
+    library: { type: 'module' },
   },
   experiments: {
     outputModule: true,
@@ -24,9 +25,9 @@ module.exports = {
         test: /\.js$/,
         exclude: /node_modules/,
         use: {
-          loader: "babel-loader",
+          loader: 'babel-loader',
           options: {
-            presets: ["@babel/preset-env"],
+            presets: ['@babel/preset-env'],
           },
         },
       },
@@ -35,16 +36,16 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { from: "public", to: "." } // Copies manifest.json, popup.html, popup.css, etc.
+        { from: 'public', to: '.' }, // Copies manifest.json, popup.html, popup.css, etc.
       ],
     }),
   ],
-  devtool: "cheap-module-source-map", // For easier debugging
+  devtool: 'cheap-module-source-map', // For easier debugging
   devServer: {
-    static: path.join(__dirname, "dist"),
+    static: path.join(__dirname, 'dist'),
     hot: true,
     liveReload: true,
-    watchFiles: ["src/**/*", "public/**/*"],
+    watchFiles: ['src/**/*', 'public/**/*'],
     devMiddleware: {
       writeToDisk: true, // Ensure files are written to disk
     },

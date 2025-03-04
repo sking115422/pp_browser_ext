@@ -4,6 +4,22 @@
 let totalStartTime = 0;
 let offscreenPort = null;
 
+const initSessionData = {
+  resizedDataUrl: null, // For the screenshot <img>
+  classification: null,
+  infTime: null,
+  ocrText: null,
+  ocrTime: null,
+  totalTime: null,
+};
+
+// Store the values in chrome.storage.session
+chrome.storage.session.set(initSessionData, () => {
+  console.log(
+    '[Background] - ' + Date.now() + ' - Session storage initialized',
+  );
+});
+
 // Setting up message passing ports
 chrome.runtime.onConnect.addListener((port) => {
   console.log('[Background] - ' + Date.now() + ' - Connected to:', port.name);
@@ -44,6 +60,31 @@ chrome.runtime.onConnect.addListener((port) => {
       console.log('[Background] - ' + Date.now() + ' - Popup disconnected.');
       offscreenPort = null;
     });
+  }
+});
+
+// Listen for changes in chrome.storage.local
+chrome.storage.onChanged.addListener((changes, area) => {
+  console.log('changes', changes);
+  console.log('area', area);
+  if (area === 'session' && changes.classification) {
+    const newClassification = changes.classification.newValue;
+    console.log('[Background] Classification changed to:', newClassification);
+    if (newClassification === 'SE') {
+      // Query for the active tab in the current window
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs.length > 0 && tabs[0].id) {
+          console.log(
+            '[Background] Injecting content.js into tab:',
+            tabs[0].id,
+          );
+          chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            files: ['content.js'],
+          });
+        }
+      });
+    }
   }
 });
 
