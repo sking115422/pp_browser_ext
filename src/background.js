@@ -1,6 +1,13 @@
 // src/background.js
 
-// Global variables
+import blockhash from 'blockhash-core';
+
+// Global settings
+const HASH_GRID_SIZE = 8;
+const HAMMING_DIST_THOLD = 8;
+const RUN_INTERVAL = 2 * 1000;
+
+// Global storage variables
 let totalStartTime = 0;
 let totalTime = 0;
 
@@ -16,6 +23,8 @@ const initSessionData = {
   ocrText: null,
   ocrTime: null,
   totalTime: null,
+  phash: null,
+  hammingDistance: null,
 };
 
 // Store the values in chrome.storage.session
@@ -121,28 +130,34 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-// Listen for changes in chrome.storage.local
-chrome.storage.onChanged.addListener((changes, area) => {
-  console.log('changes', changes);
-  console.log('area', area);
-  if (area === 'session' && changes.classification) {
-    const newClassification = changes.classification.newValue;
-    console.log('[Background] Classification changed to:', newClassification);
-    if (newClassification === 'SE') {
-      // Query for the active tab in the current window
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs && tabs.length > 0 && tabs[0].id) {
-          console.log(
-            '[Background] Injecting content.js into tab:',
-            tabs[0].id,
-          );
-          chrome.scripting.executeScript({
-            target: { tabId: tabs[0].id },
-            files: ['content.js'],
-          });
-        }
+function injectContentScript() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs && tabs.length > 0 && tabs[0].id) {
+      console.log('[Background] Injecting content.js into tab:', tabs[0].id);
+      chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        files: ['content.js'],
       });
     }
+  });
+}
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  // CASE 1: If classification changed to "SE", reinject immediately.
+  if (changes.classification && changes.classification.newValue === 'SE') {
+    injectContentScript();
+    return;
+  }
+
+  // CASE 2: If the phash changes, then check if we are on an SE page.
+  if (changes.phash) {
+    chrome.storage.session.get('classification', (result) => {
+      console.log('classification result', result);
+      if (result.classification === 'SE') {
+        chrome.storage.session.set({ classification: 'benign' });
+        return;
+      }
+    });
   }
 });
 
@@ -200,6 +215,44 @@ function captureScreenshot() {
   });
 }
 
+function getHammingDistance(hash1, hash2) {
+  let distance = 0;
+  for (let i = 0; i < hash1.length; i++) {
+    if (hash1[i] !== hash2[i]) {
+      distance++;
+    }
+  }
+  return distance;
+}
+
+async function getImagePHash(dataUrl) {
+  try {
+    // Fetch the image as a blob from the data URL.
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    // Create an ImageBitmap from the blob.
+    const bitmap = await createImageBitmap(blob);
+
+    // Create an OffscreenCanvas with the dimensions of the bitmap.
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d');
+
+    // Draw the bitmap onto the canvas.
+    ctx.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height);
+
+    // Extract the image data from the canvas.
+    const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+
+    // Generate the perceptual hash.
+    const hash = blockhash.bmvbhash(imageData, HASH_GRID_SIZE); // 8x8 hash grid
+
+    return hash;
+  } catch (error) {
+    throw error;
+  }
+}
+
 function sendSsDataToOffscreen(data) {
   // Send screenshot via open port if connected
   if (offscreenPort) {
@@ -232,10 +285,8 @@ function getCurrentTabDomain(callback) {
 // Inference Init Function
 async function startInference() {
   const startTakeSsTime = Date.now();
-  // captureScreenshotAndSend();
   const ssDataUrlRaw = await captureScreenshot();
-  const endTakeSsTime = Date.now();
-  const takeSsTime = endTakeSsTime - startTakeSsTime;
+  const takeSsTime = Date.now() - startTakeSsTime;
   console.log(
     '[Background] - ' +
       Date.now() +
@@ -243,7 +294,45 @@ async function startInference() {
       takeSsTime +
       ' ms',
   );
-  sendSsDataToOffscreen(ssDataUrlRaw);
+
+  let phashNew = await getImagePHash(ssDataUrlRaw);
+  chrome.storage.session.get(['phash'], (result) => {
+    let phashCurrent = result.phash;
+    console.log('[Background] Retrieved phash value:', phashCurrent);
+    if (phashCurrent === null || phashCurrent === 'NA') {
+      sendSsDataToOffscreen(ssDataUrlRaw);
+      chrome.storage.session.set({ phash: phashNew, hammingDistance: null });
+    } else {
+      let hammingDistance = getHammingDistance(phashCurrent, phashNew);
+      if (hammingDistance > HAMMING_DIST_THOLD) {
+        sendSsDataToOffscreen(ssDataUrlRaw);
+        chrome.storage.session.set({ phash: phashNew, hammingDistance }, () => {
+          console.log(
+            '[Background] - ' +
+              Date.now() +
+              ' - Updated session: Phash greater than threshold',
+          );
+        });
+      } else {
+        const sessionData = {
+          resizedDataUrl: 'NA',
+          method: 'Phash less than threshold',
+          infTime: 'NA',
+          ocrText: 'NA',
+          ocrTime: 'NA',
+          hammingDistance,
+          totalTime: Date.now() - totalStartTime,
+        };
+        chrome.storage.session.set(sessionData, () => {
+          console.log(
+            '[Background] - ' +
+              Date.now() +
+              ' - Session updated for: Phash less than threshold.',
+          );
+        });
+      }
+    }
+  });
 }
 
 // Main Driver Function
@@ -271,15 +360,16 @@ setInterval(() => {
             infTime: 'NA',
             ocrText: 'NA',
             ocrTime: 'NA',
+            phash: 'NA',
+            hammingDistance: 'NA',
+            totalTime: Date.now() - totalStartTime,
           };
           chrome.storage.session.set(sessionData, () => {
             console.log(
               '[Background] - ' +
                 Date.now() +
-                ' - Session updated for Tranco whitelist.',
+                ' - Session updated for: Tranco whitelist.',
             );
-            let totalTime = Date.now() - totalStartTime;
-            chrome.storage.session.set({ totalTime });
           });
         } else {
           console.log(
@@ -292,4 +382,4 @@ setInterval(() => {
       console.log('[Background] - ' + Date.now() + ' - Toggle is OFF.');
     }
   });
-}, 10000);
+}, RUN_INTERVAL);

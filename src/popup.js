@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('[Popup] - ' + Date.now() + ' - Popup loaded.');
   const screenshotEl = document.getElementById('screenshot');
+  const phashEl = document.getElementById('phash');
+  const hammingDistanceEl = document.getElementById('hammingDistance');
   const ocrTextEl = document.getElementById('ocrText');
   const classificationEl = document.getElementById('classification');
   const methodEl = document.getElementById('method');
@@ -44,20 +46,36 @@ document.addEventListener('DOMContentLoaded', () => {
       : 'NA';
   }
 
+  function formatNonTime(value) {
+    return value !== null && value !== undefined && value !== 'NA'
+      ? value
+      : 'NA';
+  }
+
   // On load, read the session data and update the popup UI.
   chrome.storage.session.get(null, (sessionData) => {
     if (sessionData) {
       if (sessionData.resizedDataUrl) {
-        screenshotEl.src = sessionData.resizedDataUrl;
+        screenshotEl.src = formatNonTime(sessionData.resizedDataUrl);
+      }
+      if (sessionData.phash) {
+        phashEl.textContent = formatNonTime(sessionData.phash);
+      }
+      if (sessionData.hammingDistance) {
+        hammingDistanceEl.textContent = formatNonTime(
+          sessionData.hammingDistance,
+        );
       }
       if (sessionData.ocrText) {
-        ocrTextEl.textContent = sessionData.ocrText;
+        ocrTextEl.textContent = formatNonTime(sessionData.ocrText);
       }
       if (sessionData.classification) {
-        classificationEl.textContent = sessionData.classification;
+        classificationEl.textContent = formatNonTime(
+          sessionData.classification,
+        );
       }
       if (sessionData.method) {
-        methodEl.textContent = sessionData.method;
+        methodEl.textContent = formatNonTime(sessionData.method);
       }
       if (sessionData.ocrTime) {
         ocrTimeEl.textContent = formatTime(sessionData.ocrTime);
@@ -75,16 +93,26 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'session') {
       if (changes.resizedDataUrl) {
-        screenshotEl.src = changes.resizedDataUrl.newValue;
+        screenshotEl.src = formatNonTime(changes.resizedDataUrl.newValue);
+      }
+      if (changes.phash) {
+        phashEl.textContent = formatNonTime(changes.phash.newValue);
+      }
+      if (changes.hammingDistance) {
+        hammingDistanceEl.textContent = formatNonTime(
+          changes.hammingDistance.newValue,
+        );
       }
       if (changes.ocrText) {
-        ocrTextEl.textContent = changes.ocrText.newValue;
+        ocrTextEl.textContent = formatNonTime(changes.ocrText.newValue);
       }
       if (changes.classification) {
-        classificationEl.textContent = changes.classification.newValue;
+        classificationEl.textContent = formatNonTime(
+          changes.classification.newValue,
+        );
       }
       if (changes.method) {
-        methodEl.textContent = changes.method.newValue;
+        methodEl.textContent = formatNonTime(changes.method.newValue);
       }
       if (changes.ocrTime) {
         ocrTimeEl.textContent = formatTime(changes.ocrTime.newValue);
