@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const screenshotEl = document.getElementById('screenshot');
   const ocrTextEl = document.getElementById('ocrText');
   const classificationEl = document.getElementById('classification');
+  const methodEl = document.getElementById('method');
   const onnxInferenceTimeEl = document.getElementById('onnxInferenceTime');
   const totalTimeEl = document.getElementById('totalTime');
   const toggleButton = document.getElementById('toggleButton');
@@ -38,7 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatTime(value) {
-    return value ? `${parseInt(value, 10)} ms` : 'N/A';
+    return value !== null && value !== undefined && value !== 'NA'
+      ? `${parseInt(value, 10)} ms`
+      : 'NA';
   }
 
   // On load, read the session data and update the popup UI.
@@ -52,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (sessionData.classification) {
         classificationEl.textContent = sessionData.classification;
+      }
+      if (sessionData.method) {
+        methodEl.textContent = sessionData.method;
       }
       if (sessionData.ocrTime) {
         ocrTimeEl.textContent = formatTime(sessionData.ocrTime);
@@ -76,6 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (changes.classification) {
         classificationEl.textContent = changes.classification.newValue;
+      }
+      if (changes.method) {
+        methodEl.textContent = changes.method.newValue;
       }
       if (changes.ocrTime) {
         ocrTimeEl.textContent = formatTime(changes.ocrTime.newValue);

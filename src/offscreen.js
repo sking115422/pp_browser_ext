@@ -1,5 +1,12 @@
 // src/offscreen.js
 
+// Global Variables
+
+const IMG_SIZE = { width: 1920, height: 1080 };
+const IMG_PROC_SCALE_FACTOR = 0.5;
+const IMG_OCR_SCALE_FACTOR = 0.4;
+const MAX_TOKEN_LENGTH = 512;
+
 console.log('[Offscreen] - ' + Date.now() + ' - Offscreen document loaded.');
 
 // Imports
@@ -47,11 +54,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Functions
 
+  // Image resize function
+  async function resizeImage(dataUrl, scaleFactor) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const newWidth = img.width * scaleFactor;
+        const newHeight = img.height * scaleFactor;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = dataUrl; // Set the image source
+    });
+  }
+
   // Process the screenshot image to create an image tensor.
   async function processImage(dataUrl) {
     return new Promise((resolve, reject) => {
-      const IMG_SIZE = { width: 1920, height: 1080 };
-      const IMG_SCALE_FACTOR = 0.5;
       const img = new Image();
       img.onload = () => {
         console.log(
@@ -96,8 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
         );
 
         // Scale the padded image.
-        const finalWidth = Math.round(IMG_SIZE.width * IMG_SCALE_FACTOR);
-        const finalHeight = Math.round(IMG_SIZE.height * IMG_SCALE_FACTOR);
+        const finalWidth = Math.round(IMG_SIZE.width * IMG_PROC_SCALE_FACTOR);
+        const finalHeight = Math.round(IMG_SIZE.height * IMG_PROC_SCALE_FACTOR);
         const finalCanvas = document.createElement('canvas');
         finalCanvas.width = finalWidth;
         finalCanvas.height = finalHeight;
@@ -145,6 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start processing the image and the iframe request at the same time
     const processImagePromise = processImage(ssDataUrlRaw);
+
+    const ssDataUrlResized = await resizeImage(
+      ssDataUrlRaw,
+      IMG_OCR_SCALE_FACTOR,
+    );
+    // const ssDataUrlResized = structuredClone(ssDataUrlRaw);
+
     const ocrRequestPromise = new Promise((resolve, reject) => {
       const messageId = Math.random().toString(36).substring(7); // Unique ID for tracking responses
 
@@ -159,7 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
       window.addEventListener('message', handleMessage);
 
       sandboxIframe.contentWindow.postMessage(
-        { type: 'ssDataUrlRaw', dataUrl: ssDataUrlRaw, messageId },
+        {
+          type: 'ssDataUrlRaw',
+          dataUrl: ssDataUrlResized,
+          messageId,
+        },
         '*',
       );
     });
@@ -176,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tokenized = await tokenizer(ocrResponse.text, {
       truncation: true,
       padding: 'max_length',
-      max_length: 512,
+      max_length: MAX_TOKEN_LENGTH,
     });
     const endTokenTime = Date.now();
     const tokenTime = endTokenTime - startTokenTime;

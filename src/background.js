@@ -2,11 +2,16 @@
 
 // Global variables
 let totalStartTime = 0;
-let offscreenPort = null;
+let totalTime = 0;
 
+let offscreenPort = null;
+let trancoSet = new Set();
+
+// Initializing session data
 const initSessionData = {
   resizedDataUrl: null, // For the screenshot <img>
   classification: null,
+  method: null,
   infTime: null,
   ocrText: null,
   ocrTime: null,
@@ -19,6 +24,59 @@ chrome.storage.session.set(initSessionData, () => {
     '[Background] - ' + Date.now() + ' - Session storage initialized',
   );
 });
+
+// Tranco list init
+function loadTrancoIntoMemory(filePath = './tranco.csv') {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = function (event) {
+      const startProcessing = Date.now();
+      const text = event.target.result;
+      const lines = text.split('\n');
+
+      trancoSet.clear(); // Ensure we start fresh
+
+      for (let line of lines) {
+        let values = line.split(',').map((value) => value.trim());
+
+        if (values.length > 1 && values[1] !== '') {
+          // Store only the domain names
+          trancoSet.add(values[1]);
+        }
+      }
+
+      const processingTime = Date.now() - startProcessing;
+      console.log(
+        `[Background] - ${Date.now()} - Time to process CSV into Set: ${processingTime} ms`,
+      );
+
+      console.log(
+        '[Background] - ' + Date.now() + ' - First 5 entries in Tranco Set:',
+        [...trancoSet].slice(0, 5),
+      );
+
+      resolve(trancoSet.size); // Resolve with size of Set
+    };
+
+    reader.onerror = () => reject('Error reading the file.');
+
+    // Fetch and read the CSV file
+    fetch(chrome.runtime.getURL(filePath))
+      .then((response) => response.blob())
+      .then((blob) => reader.readAsText(blob))
+      .catch((error) => reject(`Fetch Error: ${error}`));
+  });
+}
+
+// Load Tranco list at extension startup
+loadTrancoIntoMemory()
+  .then((size) =>
+    console.log(
+      `[Background] - ${Date.now()} - Tranco List Loaded in Memory (${size} domains)`,
+    ),
+  )
+  .catch((error) => console.error(`[Background] Error: ${error}`));
 
 // Setting up message passing ports
 chrome.runtime.onConnect.addListener((port) => {
@@ -34,18 +92,18 @@ chrome.runtime.onConnect.addListener((port) => {
           message.data,
         );
 
-        const totalTime = Date.now() - totalStartTime;
-        // Create an object with the values you want to store.
+        let totalTime = Date.now() - totalStartTime;
+
         const sessionData = {
           resizedDataUrl: message.data.resizedDataUrl, // For the screenshot <img>
           classification: message.data.classification,
+          method: 'Model inference',
           infTime: message.data.infTime,
           ocrText: message.data.ocrText,
           ocrTime: message.data.ocrTime,
           totalTime: totalTime,
         };
 
-        // Store the values in chrome.storage.session
         chrome.storage.session.set(sessionData, () => {
           console.log(
             '[Background] - ' +
@@ -158,11 +216,22 @@ function sendSsDataToOffscreen(data) {
   }
 }
 
-// Inference Init Function
+function getCurrentTabDomain(callback) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length === 0) {
+      callback(null); // No active tab found
+      return;
+    }
+    console.log('tabs', tabs);
+    const url = new URL(tabs[0].url);
+    const domain = url.hostname.replace(/^www\./, ''); // Remove "www." if present
+    callback(domain);
+  });
+}
 
+// Inference Init Function
 async function startInference() {
   const startTakeSsTime = Date.now();
-  totalStartTime = startTakeSsTime;
   // captureScreenshotAndSend();
   const ssDataUrlRaw = await captureScreenshot();
   const endTakeSsTime = Date.now();
@@ -185,7 +254,40 @@ setInterval(() => {
   chrome.storage.local.get('toggleState', (data) => {
     if (data.toggleState) {
       console.log('[Background] - ' + Date.now() + ' - Toggle is ON.');
-      startInference();
+
+      totalStartTime = Date.now();
+
+      getCurrentTabDomain((domain) => {
+        if (trancoSet.has(domain)) {
+          // if (false) {
+          console.log(
+            '[Background] - ' + Date.now() + ' - Domain in Tranco set:',
+            domain,
+          );
+          const sessionData = {
+            resizedDataUrl: 'NA',
+            classification: 'benign',
+            method: `Tranco whitelist - ${domain}`,
+            infTime: 'NA',
+            ocrText: 'NA',
+            ocrTime: 'NA',
+          };
+          chrome.storage.session.set(sessionData, () => {
+            console.log(
+              '[Background] - ' +
+                Date.now() +
+                ' - Session updated for Tranco whitelist.',
+            );
+            let totalTime = Date.now() - totalStartTime;
+            chrome.storage.session.set({ totalTime });
+          });
+        } else {
+          console.log(
+            '[Background] - ' + Date.now() + ' - Domain not in Tranco set.',
+          );
+          startInference();
+        }
+      });
     } else {
       console.log('[Background] - ' + Date.now() + ' - Toggle is OFF.');
     }

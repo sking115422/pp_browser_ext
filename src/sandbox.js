@@ -17,8 +17,8 @@ window.parent.postMessage(
     const { createScheduler, createWorker } = Tesseract;
 
     // Specify how many rows and columns you want.
-    const numRows = 3; // Change this to the desired number of rows.
-    const numCols = 5; // Change this to the desired number of columns.
+    const numRows = 4; // Desired number of rows.
+    const numCols = 1; // Desired number of columns.
     const totalPieces = numRows * numCols;
 
     // Create a scheduler and initialize as many workers as pieces.
@@ -30,6 +30,33 @@ window.parent.postMessage(
     console.log(
       `[Sandbox] Scheduler - ${Date.now()} - initialized with ${totalPieces} workers.`,
     );
+
+    // Helper function to crop the image.
+    const cropImage = (dataUrl, rectangle) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = rectangle.width;
+          canvas.height = rectangle.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(
+            img,
+            rectangle.left,
+            rectangle.top,
+            rectangle.width,
+            rectangle.height,
+            0,
+            0,
+            rectangle.width,
+            rectangle.height,
+          );
+          resolve(canvas.toDataURL());
+        };
+        img.onerror = (err) => reject(err);
+      });
+    };
 
     // Listen for screenshot messages from the parent.
     window.addEventListener('message', async (event) => {
@@ -63,7 +90,7 @@ window.parent.postMessage(
             for (let col = 0; col < numCols; col++) {
               const left = col * pieceWidth;
               const top = row * pieceHeight;
-              // Adjust the width/height for the last column/row.
+              // Adjust width/height for the last column/row.
               const rectWidth = col === numCols - 1 ? width - left : pieceWidth;
               const rectHeight =
                 row === numRows - 1 ? height - top : pieceHeight;
@@ -80,19 +107,25 @@ window.parent.postMessage(
           );
 
           try {
-            // Submit OCR jobs for each rectangle.
-            const jobPromises = jobs.map((job) =>
-              scheduler
-                .addJob('recognize', message.dataUrl, {
-                  rectangle: job.rectangle,
-                })
+            // Submit OCR jobs for each cropped piece.
+            const jobPromises = jobs.map(async (job) => {
+              // Crop the image to get the specific piece.
+              const croppedDataUrl = await cropImage(
+                message.dataUrl,
+                job.rectangle,
+              );
+              // Submit the cropped image for OCR.
+              return scheduler
+                .addJob('recognize', croppedDataUrl)
                 .then((result) => ({
                   row: job.row,
                   col: job.col,
                   text: result.data.text,
-                })),
-            );
+                }));
+            });
             const results = await Promise.all(jobPromises);
+
+            console.log('results', results);
 
             // Sort results by row then column.
             results.sort((a, b) => {
@@ -116,7 +149,7 @@ window.parent.postMessage(
 
             window.parent.postMessage(
               {
-                messageId: event.data.messageId, // Pass along the received messageId
+                messageId: event.data.messageId, // Pass along the received messageId.
                 response: { text: combinedText, ocrTime },
               },
               '*',
