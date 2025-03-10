@@ -1,11 +1,12 @@
 // src/background.js
 
 import blockhash from 'blockhash-core';
+import { parse } from 'tldts';
 
 // Global settings
 const HASH_GRID_SIZE = 8;
 const HAMMING_DIST_THOLD = 8;
-const RUN_INTERVAL = 2 * 1000;
+const RUN_INTERVAL = 5 * 1000;
 
 // Global storage variables
 let totalStartTime = 0;
@@ -35,7 +36,7 @@ chrome.storage.session.set(initSessionData, () => {
 });
 
 // Tranco list init
-function loadTrancoIntoMemory(filePath = './tranco.csv') {
+function loadTrancoIntoMemory(filePath = './tranco_100k.csv') {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -277,7 +278,7 @@ function getCurrentTabDomain(callback) {
     }
     console.log('tabs', tabs);
     const url = new URL(tabs[0].url);
-    const domain = url.hostname.replace(/^www\./, ''); // Remove "www." if present
+    const domain = parse(url.hostname).domain;
     callback(domain);
   });
 }
