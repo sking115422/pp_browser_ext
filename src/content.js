@@ -89,7 +89,34 @@ function showDangerModal() {
 
   buttonsContainer.appendChild(ignoreButton);
   buttonsContainer.appendChild(returnButton);
+
+  // Insert buttons container into modal container
   modalContainer.appendChild(buttonsContainer);
+
+  // **New Code: Retrieve and display the screenshot**
+  // Create an image element to hold the screenshot.
+  const screenshotImg = document.createElement('img');
+  screenshotImg.style.width = '224px'; // Resize the image to a width of 224 pixels
+  screenshotImg.style.display = 'block';
+  screenshotImg.style.margin = '10px auto'; // Center the image horizontally
+
+  // Retrieve the screenshot data URL from storage and, if valid, set it as the source.
+  chrome.storage.local.get('dataUrl', (result) => {
+    console.log(
+      '[Content] dataUrl retrieved from local storage: ',
+      result.dataUrl,
+    );
+    if (result.dataUrl && result.dataUrl !== 'NA') {
+      screenshotImg.src = result.dataUrl;
+      // Insert the screenshot image into the modal container above the buttons.
+      modalContainer.insertBefore(screenshotImg, buttonsContainer);
+    } else {
+      console.warn(
+        '[Content] No valid screenshot data found in local storage.',
+      );
+    }
+  });
+
   modalOverlay.appendChild(modalContainer);
 
   // Append the modal overlay to the document body
@@ -99,7 +126,7 @@ function showDangerModal() {
 
 // If the DOM is already loaded, run immediately; otherwise, wait for it.
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initContentScript);
+  document.addEventListener('DOMContentLoaded', showDangerModal);
 } else {
   showDangerModal();
 }

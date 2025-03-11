@@ -4,7 +4,7 @@
 
 const IMG_SIZE = { width: 1920, height: 1080 };
 const IMG_PROC_SCALE_FACTOR = 0.5;
-const IMG_OCR_SCALE_FACTOR = 0.4;
+const IMG_OCR_SCALE_FACTOR = 0.75;
 const MAX_TOKEN_LENGTH = 512;
 
 console.log('[Offscreen] - ' + Date.now() + ' - Offscreen document loaded.');

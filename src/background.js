@@ -5,7 +5,7 @@ import { parse } from 'tldts';
 
 // Global settings
 const HASH_GRID_SIZE = 8;
-const HAMMING_DIST_THOLD = 8;
+const HAMMING_DIST_THOLD = 3;
 const RUN_INTERVAL = 5 * 1000;
 
 // Global storage variables
@@ -14,6 +14,10 @@ let totalTime = 0;
 
 let offscreenPort = null;
 let trancoSet = new Set();
+
+const initLocalData = {
+  dataUrl: null,
+};
 
 // Initializing session data
 const initSessionData = {
@@ -33,6 +37,11 @@ chrome.storage.session.set(initSessionData, () => {
   console.log(
     '[Background] - ' + Date.now() + ' - Session storage initialized',
   );
+});
+
+// Store the values in chrome.storage.session
+chrome.storage.local.set(initLocalData, () => {
+  console.log('[Background] - ' + Date.now() + ' - Local storage initialized');
 });
 
 // Tranco list init
@@ -106,7 +115,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
         const sessionData = {
           resizedDataUrl: message.data.resizedDataUrl, // For the screenshot <img>
-          classification: message.data.classification,
+          classification: message.data.classification + '_' + Date.now(),
           method: 'Model inference',
           infTime: message.data.infTime,
           ocrText: message.data.ocrText,
@@ -145,20 +154,12 @@ function injectContentScript() {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   // CASE 1: If classification changed to "SE", reinject immediately.
-  if (changes.classification && changes.classification.newValue === 'SE') {
+  if (
+    changes.classification &&
+    changes.classification.newValue.split('_')[0] === 'SE'
+  ) {
     injectContentScript();
     return;
-  }
-
-  // CASE 2: If the phash changes, then check if we are on an SE page.
-  if (changes.phash) {
-    chrome.storage.session.get('classification', (result) => {
-      console.log('classification result', result);
-      if (result.classification === 'SE') {
-        chrome.storage.session.set({ classification: 'benign' });
-        return;
-      }
-    });
   }
 });
 
@@ -287,6 +288,7 @@ function getCurrentTabDomain(callback) {
 async function startInference() {
   const startTakeSsTime = Date.now();
   const ssDataUrlRaw = await captureScreenshot();
+  chrome.storage.local.set({ dataUrl: ssDataUrlRaw });
   const takeSsTime = Date.now() - startTakeSsTime;
   console.log(
     '[Background] - ' +
@@ -305,7 +307,7 @@ async function startInference() {
       chrome.storage.session.set({ phash: phashNew, hammingDistance: null });
     } else {
       let hammingDistance = getHammingDistance(phashCurrent, phashNew);
-      if (hammingDistance > HAMMING_DIST_THOLD) {
+      if (hammingDistance >= HAMMING_DIST_THOLD) {
         sendSsDataToOffscreen(ssDataUrlRaw);
         chrome.storage.session.set({ phash: phashNew, hammingDistance }, () => {
           console.log(
