@@ -37,6 +37,7 @@
         "offscreen.html",
         "offscreen.js",
         "content.js",
+        "utils.js",
         "models/*",
         "libs/*"
       ],

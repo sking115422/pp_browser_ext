@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mainToggle = document.getElementById('mainToggle');
   const ocrTimeEl = document.getElementById('ocrTime');
   const ssLoggingToggle = document.getElementById('ssLoggingToggle');
+  const debugLoggingToggle = document.getElementById('debugLoggingToggle');
 
   // Update the toggle button based on stored state.
   chrome.storage.local.get('mainToggleState', (data) => {
@@ -42,15 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initialize the SS Logging state
-  chrome.storage.local.get('ssLoggingState', (data) => {
-    updateSsLoggingToggle(data.ssLoggingState ?? false);
+  chrome.storage.local.get('ssToggleState', (data) => {
+    updateSsLoggingToggle(data.ssToggleState ?? false);
   });
 
   // Event listener for SS Logging toggle button
   ssLoggingToggle.addEventListener('click', () => {
-    chrome.storage.local.get('ssLoggingState', (data) => {
-      const newState = !data.ssLoggingState;
-      chrome.storage.local.set({ ssLoggingState: newState }, () => {
+    chrome.storage.local.get('ssToggleState', (data) => {
+      const newState = !data.ssToggleState;
+      chrome.storage.local.set({ ssToggleState: newState }, () => {
         updateSsLoggingToggle(newState);
         console.log(
           '[Popup] - ' + Date.now() + ' - SS Logging state updated:',
@@ -63,6 +64,34 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSsLoggingToggle(isOn) {
     ssLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
     ssLoggingToggle.className = isOn ? 'on' : 'off';
+    console.log(
+      '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
+      isOn,
+    );
+  }
+
+  // Initialize the Debug Logging state
+  chrome.storage.local.get('debugToggleState', (data) => {
+    updateDebugLoggingToggle(data.debugToggleState ?? false);
+  });
+
+  // Event listener for Debug Logging toggle button
+  debugLoggingToggle.addEventListener('click', () => {
+    chrome.storage.local.get('debugToggleState', (data) => {
+      const newState = !data.debugToggleState;
+      chrome.storage.local.set({ debugToggleState: newState }, () => {
+        updateDebugLoggingToggle(newState);
+        console.log(
+          '[Popup] - ' + Date.now() + ' - Debug Logging state updated:',
+          newState,
+        );
+      });
+    });
+  });
+
+  function updateDebugLoggingToggle(isOn) {
+    debugLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
+    debugLoggingToggle.className = isOn ? 'on' : 'off';
     console.log(
       '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
       isOn,

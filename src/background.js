@@ -7,6 +7,7 @@ import { parse } from 'tldts';
 const HASH_GRID_SIZE = 8;
 const HAMMING_DIST_THOLD = 3;
 const SCAN_INTERVAL = 5 * 1000;
+const SAVE_INTERVAL = 60 * 1000;
 
 // Global variables
 let sessionStartTime = Date.now();
@@ -17,6 +18,37 @@ let currentDomain = null;
 
 let offscreenPort = null;
 let trancoSet = new Set();
+
+function logMessage(message) {
+  let timestampedMessage = `[${new Date().toISOString()}] - ${message}`;
+
+  // Log to console
+  console.log(timestampedMessage);
+
+  // Store logs in chrome.storage.local
+  chrome.storage.local.get({ logs: [] }, (result) => {
+    let logs = result.logs;
+    logs.push(timestampedMessage);
+    chrome.storage.local.set({ logs });
+  });
+}
+
+function saveLogsToFile() {
+  chrome.storage.local.get({ logs: [] }, (result) => {
+    let logText = result.logs.join('\n');
+    // Create a data URL from the log text
+    let url = 'data:text/plain;charset=utf-8,' + encodeURIComponent(logText);
+
+    chrome.downloads.download({
+      url: url,
+      filename: `${sessionStartTime}/ext_logs_${Date.now()}.txt`,
+      saveAs: false,
+    });
+
+    // Clear logs after saving (optional)
+    chrome.storage.local.set({ logs: [] });
+  });
+}
 
 // Initializing local data
 const initLocalData = {
@@ -38,14 +70,12 @@ const initSessionData = {
 
 // Store the values in chrome.storage.session
 chrome.storage.session.set(initSessionData, () => {
-  console.log(
-    '[Background] - ' + Date.now() + ' - Session storage initialized',
-  );
+  logMessage('[Background] - Session storage initialized');
 });
 
 // Store the values in chrome.storage.session
 chrome.storage.local.set(initLocalData, () => {
-  console.log('[Background] - ' + Date.now() + ' - Local storage initialized');
+  logMessage('[Background] - Local storage initialized');
 });
 
 // Tranco list init
@@ -70,12 +100,12 @@ function loadTrancoIntoMemory(filePath = './tranco_100k.csv') {
       }
 
       const processingTime = Date.now() - startProcessing;
-      console.log(
-        `[Background] - ${Date.now()} - Time to process CSV into Set: ${processingTime} ms`,
+      logMessage(
+        `[Background] - Time to process CSV into Set: ${processingTime} ms`,
       );
 
-      console.log(
-        '[Background] - ' + Date.now() + ' - First 5 entries in Tranco Set:',
+      logMessage(
+        '[Background] - First 5 entries in Tranco Set:',
         [...trancoSet].slice(0, 5),
       );
 
@@ -93,27 +123,27 @@ function loadTrancoIntoMemory(filePath = './tranco_100k.csv') {
 }
 
 // Load Tranco list at extension startup
+let loadTrancoStartTime = Date.now();
 loadTrancoIntoMemory()
   .then((size) =>
-    console.log(
-      `[Background] - ${Date.now()} - Tranco List Loaded in Memory (${size} domains)`,
-    ),
+    logMessage(`[Background] - Tranco List Loaded in Memory (${size} domains)`),
   )
   .catch((error) => console.error(`[Background] Error: ${error}`));
+let loadTrancoTotalTime = Date.now() - loadTrancoStartTime;
+logMessage(
+  `[Background] - Time taken to load Tranco List: ${loadTrancoTotalTime} ms`,
+);
 
 // Setting up message passing ports
 chrome.runtime.onConnect.addListener((port) => {
-  console.log('[Background] - ' + Date.now() + ' - Connected to:', port.name);
+  logMessage(`[Background] - Connected to: ${port.name}`);
 
   if (port.name === 'offscreenPort') {
     offscreenPort = port;
 
     port.onMessage.addListener((message) => {
       if (message.type === 'infResponse') {
-        console.log(
-          '[Background] - ' + Date.now() + ' - Received infResponse:',
-          message.data,
-        );
+        logMessage('[Background] - Received infResponse');
 
         let totalTime = Date.now() - totalStartTime;
 
@@ -128,25 +158,21 @@ chrome.runtime.onConnect.addListener((port) => {
         };
 
         chrome.storage.session.set(sessionData, () => {
-          console.log(
-            '[Background] - ' +
-              Date.now() +
-              ' - Session storage updated with infResponse',
-          );
+          logMessage('[Background] - Session storage updated with infResponse');
         });
       }
     });
 
     port.onDisconnect.addListener(() => {
-      console.log('[Background] - ' + Date.now() + ' - Popup disconnected.');
+      logMessage('[Background] - Popup disconnected.');
       offscreenPort = null;
     });
   }
 });
 
 function saveScreenshot(dataUrl, baseDir, filename) {
-  chrome.storage.local.get('ssLoggingState', (data) => {
-    if (data.ssLoggingState) {
+  chrome.storage.local.get(['mainToggleState', 'ssToggleState'], (data) => {
+    if (data.mainToggleState && data.ssToggleState) {
       fetch(dataUrl)
         .then((res) => res.blob())
         .then((blob) => {
@@ -164,9 +190,7 @@ function saveScreenshot(dataUrl, baseDir, filename) {
                 if (chrome.runtime.lastError) {
                   console.error('Download error:', chrome.runtime.lastError);
                 } else {
-                  console.log(
-                    `[Background] - ${Date.now()} - Screenshot saved as: ${fullPath}`,
-                  );
+                  logMessage(`[Background] - Screenshot saved as: ${fullPath}`);
                 }
               },
             );
@@ -181,7 +205,7 @@ function saveScreenshot(dataUrl, baseDir, filename) {
 function injectContentScript() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs && tabs.length > 0 && tabs[0].id) {
-      console.log('[Background] Injecting content.js into tab:', tabs[0].id);
+      logMessage(`[Background] Injecting content.js into tab: ${tabs[0].id}`);
       chrome.scripting.executeScript({
         target: { tabId: tabs[0].id },
         files: ['content.js'],
@@ -226,27 +250,19 @@ async function ensureOffscreen() {
         reasons: ['WORKERS'],
         justification: 'Needed to run ONNX inference',
       });
-      console.log(
-        '[Background] - ' + Date.now() + ' - Offscreen document created.',
-      );
+      logMessage('[Background] - Offscreen document created.');
     } else {
-      console.log(
-        '[Background] - ' +
-          Date.now() +
-          ' - Offscreen document already exists.',
-      );
+      logMessage('[Background] - Offscreen document already exists.');
     }
     return true;
   } catch (err) {
-    console.error('Error ensuring offscreen document:', err);
+    console.error('[Background] - Error ensuring offscreen document:', err);
     return false;
   }
 }
 
 function captureScreenshot() {
-  console.log(
-    '[Background] - ' + Date.now() + ' - Attempting to capture screenshot...',
-  );
+  logMessage('[Background] - Attempting to capture screenshot...');
 
   return new Promise((resolve, reject) => {
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
@@ -259,7 +275,7 @@ function captureScreenshot() {
         return;
       }
 
-      console.log('[Background] - ' + Date.now() + ' - Screenshot captured.');
+      logMessage('[Background] - Screenshot captured.');
       resolve(dataUrl);
     });
   });
@@ -306,11 +322,7 @@ async function getImagePHash(dataUrl) {
 function sendSsDataToOffscreen(data) {
   // Send screenshot via open port if connected
   if (offscreenPort) {
-    console.log(
-      '[Background] - ' +
-        Date.now() +
-        ' - Sending raw screenshot data url to offscreen.',
-    );
+    logMessage('[Background] - Sending raw screenshot data url to offscreen.');
     offscreenPort.postMessage({ type: 'ssDataUrlRaw', data: data });
   } else {
     console.warn(
@@ -325,7 +337,6 @@ function getCurrentTabDomain(callback) {
       callback(null); // No active tab found
       return;
     }
-    console.log('tabs', tabs);
     const url = new URL(tabs[0].url);
     const domain = parse(url.hostname).domain;
     callback(domain);
@@ -338,18 +349,12 @@ async function startInference() {
   ssDataUrlRaw = await captureScreenshot();
   chrome.storage.local.set({ dataUrl: ssDataUrlRaw });
   const takeSsTime = Date.now() - startTakeSsTime;
-  console.log(
-    '[Background] - ' +
-      Date.now() +
-      ' - Time to take screenshot: ' +
-      takeSsTime +
-      ' ms',
-  );
+  logMessage(`[Background] - Time to take screenshot: ${takeSsTime} ms`);
 
   let phashNew = await getImagePHash(ssDataUrlRaw);
   chrome.storage.session.get(['phash'], (result) => {
     let phashCurrent = result.phash;
-    console.log('[Background] Retrieved phash value:', phashCurrent);
+    logMessage(`[Background] Retrieved phash value: ${phashCurrent}`);
     if (phashCurrent === null || phashCurrent === 'NA') {
       sendSsDataToOffscreen(ssDataUrlRaw);
       chrome.storage.session.set({ phash: phashNew, hammingDistance: null });
@@ -358,10 +363,8 @@ async function startInference() {
       if (hammingDistance >= HAMMING_DIST_THOLD) {
         sendSsDataToOffscreen(ssDataUrlRaw);
         chrome.storage.session.set({ phash: phashNew, hammingDistance }, () => {
-          console.log(
-            '[Background] - ' +
-              Date.now() +
-              ' - Updated session: Phash greater than threshold',
+          logMessage(
+            '[Background] - Updated session: Phash greater than threshold',
           );
         });
       } else {
@@ -375,10 +378,8 @@ async function startInference() {
           totalTime: Date.now() - totalStartTime,
         };
         chrome.storage.session.set(sessionData, () => {
-          console.log(
-            '[Background] - ' +
-              Date.now() +
-              ' - Session updated for: Phash less than threshold.',
+          logMessage(
+            '[Background] - Session updated for: Phash less than threshold.',
           );
         });
         chrome.storage.session.get(['phash', 'classification'], (result) => {
@@ -398,9 +399,9 @@ async function startInference() {
 setInterval(() => {
   ensureOffscreen();
 
-  chrome.storage.local.get('mainToggleState', (data) => {
+  chrome.storage.local.get(['mainToggleState'], (data) => {
     if (data.mainToggleState) {
-      console.log('[Background] - ' + Date.now() + ' - Toggle is ON.');
+      logMessage('[Background] - Toggle is ON.');
 
       totalStartTime = Date.now();
 
@@ -408,10 +409,7 @@ setInterval(() => {
         currentDomain = domain;
         if (trancoSet.has(domain)) {
           // if (false) {
-          console.log(
-            '[Background] - ' + Date.now() + ' - Domain in Tranco set:',
-            domain,
-          );
+          logMessage(`[Background] - Domain in Tranco set: ${domain}`);
           const sessionData = {
             resizedDataUrl: 'NA',
             classification: 'benign',
@@ -424,11 +422,7 @@ setInterval(() => {
             totalTime: Date.now() - totalStartTime,
           };
           chrome.storage.session.set(sessionData, () => {
-            console.log(
-              '[Background] - ' +
-                Date.now() +
-                ' - Session updated for: Tranco whitelist.',
-            );
+            logMessage('[Background] - Session updated for: Tranco whitelist.');
           });
           saveScreenshot(
             ssDataUrlRaw,
@@ -436,14 +430,20 @@ setInterval(() => {
             `${domain}_wl_${Date.now()}`,
           );
         } else {
-          console.log(
-            '[Background] - ' + Date.now() + ' - Domain not in Tranco set.',
-          );
+          logMessage('[Background] - Domain not in Tranco set.');
           startInference();
         }
       });
     } else {
-      console.log('[Background] - ' + Date.now() + ' - Toggle is OFF.');
+      logMessage('[Background] - Toggle is OFF.');
     }
   });
 }, SCAN_INTERVAL);
+
+setInterval(() => {
+  chrome.storage.local.get(['mainToggleState', 'debugToggleState'], (data) => {
+    if (data.mainToggleState && data.debugToggleState) {
+      saveLogsToFile();
+    }
+  });
+}, SAVE_INTERVAL);

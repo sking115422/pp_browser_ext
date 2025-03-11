@@ -26,6 +26,16 @@ body {
   cursor: pointer;
 }
 
+#debugLoggingToggle {
+  padding: 4px;
+  font-size: 10px;
+  width: auto;
+  height: auto;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
 .on {
   background-color: green;
   color: white;
