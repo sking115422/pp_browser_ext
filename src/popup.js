@@ -13,18 +13,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const methodEl = document.getElementById('method');
   const onnxInferenceTimeEl = document.getElementById('onnxInferenceTime');
   const totalTimeEl = document.getElementById('totalTime');
-  const toggleButton = document.getElementById('toggleButton');
+  const mainToggle = document.getElementById('mainToggle');
   const ocrTimeEl = document.getElementById('ocrTime');
+  const ssLoggingToggle = document.getElementById('ssLoggingToggle');
 
   // Update the toggle button based on stored state.
-  chrome.storage.local.get('toggleState', (data) => {
-    updateToggleButton(data.toggleState ?? false);
+  chrome.storage.local.get('mainToggleState', (data) => {
+    updateToggleButton(data.mainToggleState ?? false);
   });
 
-  toggleButton.addEventListener('click', () => {
-    chrome.storage.local.get('toggleState', (data) => {
-      const newState = !data.toggleState;
-      chrome.storage.local.set({ toggleState: newState }, () => {
+  mainToggle.addEventListener('click', () => {
+    chrome.storage.local.get('mainToggleState', (data) => {
+      const newState = !data.mainToggleState;
+      chrome.storage.local.set({ mainToggleState: newState }, () => {
         updateToggleButton(newState);
         console.log(
           '[Popup] - ' + Date.now() + ' - Toggle state updated:',
@@ -35,9 +36,37 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function updateToggleButton(isOn) {
-    toggleButton.textContent = isOn ? 'ON' : 'OFF';
-    toggleButton.className = isOn ? 'on' : 'off';
+    mainToggle.textContent = isOn ? 'ON' : 'OFF';
+    mainToggle.className = isOn ? 'on' : 'off';
     console.log('[Popup] - ' + Date.now() + ' - Toggle button updated:', isOn);
+  }
+
+  // Initialize the SS Logging state
+  chrome.storage.local.get('ssLoggingState', (data) => {
+    updateSsLoggingToggle(data.ssLoggingState ?? false);
+  });
+
+  // Event listener for SS Logging toggle button
+  ssLoggingToggle.addEventListener('click', () => {
+    chrome.storage.local.get('ssLoggingState', (data) => {
+      const newState = !data.ssLoggingState;
+      chrome.storage.local.set({ ssLoggingState: newState }, () => {
+        updateSsLoggingToggle(newState);
+        console.log(
+          '[Popup] - ' + Date.now() + ' - SS Logging state updated:',
+          newState,
+        );
+      });
+    });
+  });
+
+  function updateSsLoggingToggle(isOn) {
+    ssLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
+    ssLoggingToggle.className = isOn ? 'on' : 'off';
+    console.log(
+      '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
+      isOn,
+    );
   }
 
   function formatTime(value) {

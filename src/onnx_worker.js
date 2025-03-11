@@ -63,7 +63,7 @@ self.onmessage = async (e) => {
       let classification = 'benign';
       if (output && output.output) {
         const logits = output.output.data;
-        classification = logits[1] > logits[0] ? 'SE' : 'benign';
+        classification = logits[1] > logits[0] ? 'malicious' : 'benign';
       }
       console.log(
         '[ONNX Worker] - ' +

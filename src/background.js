@@ -6,15 +6,19 @@ import { parse } from 'tldts';
 // Global settings
 const HASH_GRID_SIZE = 8;
 const HAMMING_DIST_THOLD = 3;
-const RUN_INTERVAL = 5 * 1000;
+const SCAN_INTERVAL = 5 * 1000;
 
-// Global storage variables
+// Global variables
+let sessionStartTime = Date.now();
 let totalStartTime = 0;
 let totalTime = 0;
+let ssDataUrlRaw = null;
+let currentDomain = null;
 
 let offscreenPort = null;
 let trancoSet = new Set();
 
+// Initializing local data
 const initLocalData = {
   dataUrl: null,
 };
@@ -140,6 +144,40 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+function saveScreenshot(dataUrl, baseDir, filename) {
+  chrome.storage.local.get('ssLoggingState', (data) => {
+    if (data.ssLoggingState) {
+      fetch(dataUrl)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const reader = new FileReader();
+          reader.onloadend = function () {
+            const dataUrlResult = reader.result;
+            const fullPath = `${baseDir}/${filename}.png`;
+            chrome.downloads.download(
+              {
+                url: dataUrlResult,
+                filename: fullPath, // This specifies the directory inside Downloads
+                saveAs: false, // Automatically saves without prompt
+              },
+              (downloadId) => {
+                if (chrome.runtime.lastError) {
+                  console.error('Download error:', chrome.runtime.lastError);
+                } else {
+                  console.log(
+                    `[Background] - ${Date.now()} - Screenshot saved as: ${fullPath}`,
+                  );
+                }
+              },
+            );
+          };
+          reader.readAsDataURL(blob);
+        })
+        .catch((error) => console.error('Error saving screenshot:', error));
+    }
+  });
+}
+
 function injectContentScript() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs && tabs.length > 0 && tabs[0].id) {
@@ -153,12 +191,22 @@ function injectContentScript() {
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  // CASE 1: If classification changed to "SE", reinject immediately.
+  // CASE 1: If classification changed to "malicious", reinject immediately.
   if (
     changes.classification &&
-    changes.classification.newValue.split('_')[0] === 'SE'
+    changes.classification.newValue.split('_')[0] === 'malicious'
   ) {
     injectContentScript();
+    chrome.storage.session.get(
+      ['phash', 'classification', 'currentDomain'],
+      (result) => {
+        saveScreenshot(
+          ssDataUrlRaw,
+          `${sessionStartTime}/${result.classification.split('_')[0]}`,
+          `${currentDomain}_${result.phash}_${Date.now()}`,
+        );
+      },
+    );
     return;
   }
 });
@@ -287,7 +335,7 @@ function getCurrentTabDomain(callback) {
 // Inference Init Function
 async function startInference() {
   const startTakeSsTime = Date.now();
-  const ssDataUrlRaw = await captureScreenshot();
+  ssDataUrlRaw = await captureScreenshot();
   chrome.storage.local.set({ dataUrl: ssDataUrlRaw });
   const takeSsTime = Date.now() - startTakeSsTime;
   console.log(
@@ -333,6 +381,13 @@ async function startInference() {
               ' - Session updated for: Phash less than threshold.',
           );
         });
+        chrome.storage.session.get(['phash', 'classification'], (result) => {
+          saveScreenshot(
+            ssDataUrlRaw,
+            `${sessionStartTime}/${result.classification.split('_')[0]}`,
+            `${currentDomain}_${result.phash}_${Date.now()}`,
+          );
+        });
       }
     }
   });
@@ -343,13 +398,14 @@ async function startInference() {
 setInterval(() => {
   ensureOffscreen();
 
-  chrome.storage.local.get('toggleState', (data) => {
-    if (data.toggleState) {
+  chrome.storage.local.get('mainToggleState', (data) => {
+    if (data.mainToggleState) {
       console.log('[Background] - ' + Date.now() + ' - Toggle is ON.');
 
       totalStartTime = Date.now();
 
       getCurrentTabDomain((domain) => {
+        currentDomain = domain;
         if (trancoSet.has(domain)) {
           // if (false) {
           console.log(
@@ -374,6 +430,11 @@ setInterval(() => {
                 ' - Session updated for: Tranco whitelist.',
             );
           });
+          saveScreenshot(
+            ssDataUrlRaw,
+            `${sessionStartTime}/benign`,
+            `${domain}_wl_${Date.now()}`,
+          );
         } else {
           console.log(
             '[Background] - ' + Date.now() + ' - Domain not in Tranco set.',
@@ -385,4 +446,4 @@ setInterval(() => {
       console.log('[Background] - ' + Date.now() + ' - Toggle is OFF.');
     }
   });
-}, RUN_INTERVAL);
+}, SCAN_INTERVAL);

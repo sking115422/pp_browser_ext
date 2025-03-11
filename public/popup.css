@@ -1,28 +1,37 @@
 html {
-    text-align: center;
+  text-align: center;
 }
 
 body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    padding: 10px;
-    display: inline-block; /* Allows the width to shrink-to-fit its content */
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 10px;
+  display: inline-block; /* Allows the width to shrink-to-fit its content */
 }
 
-button {
-    padding: 10px;
-    /* margin-top: 15px; */
-    margin-bottom: 15px;
-    font-size: 16px;
-    cursor: pointer;
+#mainToggle {
+  padding: 10px;
+  /* margin-top: 15px; */
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+#ssLoggingToggle {
+  padding: 4px;
+  font-size: 10px;
+  width: auto;
+  height: auto;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .on {
-    background-color: green;
-    color: white;
+  background-color: green;
+  color: white;
 }
 
 .off {
-    background-color: red;
-    color: white;
+  background-color: red;
+  color: white;
 }
