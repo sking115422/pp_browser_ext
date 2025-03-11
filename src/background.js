@@ -49,6 +49,10 @@ function saveLogsToFile() {
     chrome.storage.local.set({ logs: [] });
   });
 }
+// Initialize domain
+getCurrentTabDomain((domain) => {
+  currentDomain = domain;
+});
 
 // Initializing local data
 const initLocalData = {
@@ -170,36 +174,45 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-function saveScreenshot(dataUrl, baseDir, filename) {
-  chrome.storage.local.get(['mainToggleState', 'ssToggleState'], (data) => {
-    if (data.mainToggleState && data.ssToggleState) {
-      fetch(dataUrl)
-        .then((res) => res.blob())
-        .then((blob) => {
-          const reader = new FileReader();
-          reader.onloadend = function () {
-            const dataUrlResult = reader.result;
-            const fullPath = `${baseDir}/${filename}.png`;
-            chrome.downloads.download(
-              {
-                url: dataUrlResult,
-                filename: fullPath, // This specifies the directory inside Downloads
-                saveAs: false, // Automatically saves without prompt
-              },
-              (downloadId) => {
-                if (chrome.runtime.lastError) {
-                  console.error('Download error:', chrome.runtime.lastError);
-                } else {
-                  logMessage(`[Background] - Screenshot saved as: ${fullPath}`);
-                }
-              },
-            );
-          };
-          reader.readAsDataURL(blob);
-        })
-        .catch((error) => console.error('Error saving screenshot:', error));
-    }
-  });
+async function saveScreenshot(dataUrl, baseDir, filename) {
+  console.log('dataUrl', dataUrl);
+  chrome.storage.local.get(
+    ['mainToggleState', 'ssToggleState'],
+    async (data) => {
+      if (data.mainToggleState && data.ssToggleState) {
+        if (!dataUrl) {
+          dataUrl = await captureScreenshot();
+        }
+        fetch(dataUrl)
+          .then((res) => res.blob())
+          .then((blob) => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+              const dataUrlResult = reader.result;
+              const fullPath = `${baseDir}/${filename}.png`;
+              chrome.downloads.download(
+                {
+                  url: dataUrlResult,
+                  filename: fullPath, // Specifies the directory inside Downloads
+                  saveAs: false, // Automatically saves without prompt
+                },
+                (downloadId) => {
+                  if (chrome.runtime.lastError) {
+                    console.error('Download error:', chrome.runtime.lastError);
+                  } else {
+                    logMessage(
+                      `[Background] - Screenshot saved as: ${fullPath}`,
+                    );
+                  }
+                },
+              );
+            };
+            reader.readAsDataURL(blob);
+          })
+          .catch((error) => console.error('Error saving screenshot:', error));
+      }
+    },
+  );
 }
 
 function injectContentScript() {
@@ -424,6 +437,7 @@ setInterval(() => {
           chrome.storage.session.set(sessionData, () => {
             logMessage('[Background] - Session updated for: Tranco whitelist.');
           });
+
           saveScreenshot(
             ssDataUrlRaw,
             `${sessionStartTime}/benign`,
