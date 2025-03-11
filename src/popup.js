@@ -16,7 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const mainToggle = document.getElementById('mainToggle');
   const ocrTimeEl = document.getElementById('ocrTime');
   const ssLoggingToggle = document.getElementById('ssLoggingToggle');
-  const debugLoggingToggle = document.getElementById('debugLoggingToggle');
+  const performanceLoggingToggle = document.getElementById(
+    'performanceLoggingToggle',
+  );
 
   // Update the toggle button based on stored state.
   chrome.storage.local.get('mainToggleState', (data) => {
@@ -70,28 +72,28 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
-  // Initialize the Debug Logging state
-  chrome.storage.local.get('debugToggleState', (data) => {
-    updateDebugLoggingToggle(data.debugToggleState ?? false);
+  // Initialize the Performance Logging state
+  chrome.storage.local.get('performanceToggleState', (data) => {
+    updatePerformanceLoggingToggle(data.performanceToggleState ?? false);
   });
 
-  // Event listener for Debug Logging toggle button
-  debugLoggingToggle.addEventListener('click', () => {
-    chrome.storage.local.get('debugToggleState', (data) => {
-      const newState = !data.debugToggleState;
-      chrome.storage.local.set({ debugToggleState: newState }, () => {
-        updateDebugLoggingToggle(newState);
+  // Event listener for Performance Logging toggle button
+  performanceLoggingToggle.addEventListener('click', () => {
+    chrome.storage.local.get('performanceToggleState', (data) => {
+      const newState = !data.performanceToggleState;
+      chrome.storage.local.set({ performanceToggleState: newState }, () => {
+        updatePerformanceLoggingToggle(newState);
         console.log(
-          '[Popup] - ' + Date.now() + ' - Debug Logging state updated:',
+          '[Popup] - ' + Date.now() + ' - Performance Logging state updated:',
           newState,
         );
       });
     });
   });
 
-  function updateDebugLoggingToggle(isOn) {
-    debugLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
-    debugLoggingToggle.className = isOn ? 'on' : 'off';
+  function updatePerformanceLoggingToggle(isOn) {
+    performanceLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
+    performanceLoggingToggle.className = isOn ? 'on' : 'off';
     console.log(
       '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
       isOn,
