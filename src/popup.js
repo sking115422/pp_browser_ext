@@ -20,11 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
     'performanceLoggingToggle',
   );
 
-  // Update the toggle button based on stored state.
+  ////// Main Toggle
+
+  // Initialize the main toggle state
   chrome.storage.local.get('mainToggleState', (data) => {
     updateToggleButton(data.mainToggleState ?? false);
   });
 
+  // Event listener for main toggle button
   mainToggle.addEventListener('click', () => {
     chrome.storage.local.get('mainToggleState', (data) => {
       const newState = !data.mainToggleState;
@@ -38,11 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Update function for main toggle
   function updateToggleButton(isOn) {
     mainToggle.textContent = isOn ? 'ON' : 'OFF';
     mainToggle.className = isOn ? 'on' : 'off';
     console.log('[Popup] - ' + Date.now() + ' - Toggle button updated:', isOn);
   }
+
+  ////// SS Logging Toggle
 
   // Initialize the SS Logging state
   chrome.storage.local.get('ssToggleState', (data) => {
@@ -63,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Update function for SS Logging toggle
   function updateSsLoggingToggle(isOn) {
     ssLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
     ssLoggingToggle.className = isOn ? 'on' : 'off';
@@ -71,6 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
       isOn,
     );
   }
+
+  ////// Performance Logging
 
   // Initialize the Performance Logging state
   chrome.storage.local.get('performanceToggleState', (data) => {
@@ -91,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Update function for performance Logging toggle
   function updatePerformanceLoggingToggle(isOn) {
     performanceLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
     performanceLoggingToggle.className = isOn ? 'on' : 'off';

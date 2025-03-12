@@ -9,7 +9,7 @@ import { parse } from 'tldts';
 const HASH_GRID_SIZE = 8;
 const HAMMING_DIST_THOLD = 3;
 const SCAN_INTERVAL = 5 * 1000;
-const SAVE_INTERVAL = 60 * 1000;
+const SAVE_INTERVAL = 5 * 1000;
 
 // Global variables
 
@@ -21,18 +21,23 @@ let currentDomain = null;
 
 let offscreenPort = null;
 let trancoSet = new Set();
+let logs = [];
 
 function logMessage(message) {
   chrome.storage.local.get(
     ['mainToggleState', 'performanceToggleState'],
     (result) => {
-      if (result.mainToggleState && result.performanceToggleState) {
+      if (result.performanceToggleState) {
         let timestampedMessage = `[${new Date().toISOString()}] - ${message}`;
-        chrome.storage.local.get({ logs: [] }, (result) => {
-          let logs = result.logs;
-          logs.push(timestampedMessage);
-          chrome.storage.local.set({ logs });
+        logs.push(timestampedMessage);
+
+        // Update storage with the full logs array.
+        chrome.storage.local.set({ logs }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error updating logs:', chrome.runtime.lastError);
+          }
         });
+        console.log(timestampedMessage);
       }
     },
   );
@@ -58,6 +63,9 @@ function saveLogsToFile() {
 // Initializing local data
 const initLocalData = {
   dataUrl: null,
+  mainToggleState: false,
+  ssToggleState: false,
+  performanceToggleState: true,
 };
 
 // Initializing session data
@@ -140,10 +148,10 @@ async function initBackground() {
     await ensureOffscreen();
     let offscreenCreateTotalTime = Date.now() - offscreenCreateStartTime;
     console.log(
-      `[Background] - ${Date.now()} - offscreen doc created in ${offscreenCreateTotalTime} ms`,
+      `[Background] - ${Date.now()} - Offscreen doc created in ${offscreenCreateTotalTime} ms`,
     );
     logMessage(
-      `[Background] - offscreen doc created: ${offscreenCreateTotalTime} ms`,
+      `[Background] - Offscreen doc created: ${offscreenCreateTotalTime} ms`,
     );
     // Load Tranco list at extension startup
     let loadTrancoStartTime = Date.now();
@@ -512,10 +520,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
         if (result.offscreenInitialized && result.backgroundInitialized) {
           let initTotalTime = Date.now() - sessionStartTime;
           console.log(
-            `[Background] - initialization completed in ${initTotalTime} ms`,
+            `[Background] - Initialization completed in ${initTotalTime} ms`,
           );
           logMessage(
-            `[Background] - initialization completed: ${initTotalTime} ms`,
+            `[Background] - Initialization completed: ${initTotalTime} ms`,
           );
           runScans();
         }
@@ -587,7 +595,7 @@ function runScans() {
     chrome.storage.local.get(
       ['mainToggleState', 'performanceToggleState'],
       (data) => {
-        if (data.mainToggleState && data.performanceToggleState) {
+        if (data.performanceToggleState) {
           saveLogsToFile();
         }
       },
