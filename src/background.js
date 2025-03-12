@@ -9,13 +9,14 @@ import { parse } from 'tldts';
 const HASH_GRID_SIZE = 8;
 const HAMMING_DIST_THOLD = 3;
 const SCAN_INTERVAL = 5 * 1000;
-const SAVE_INTERVAL = 5 * 1000;
+const SAVE_INTERVAL = 30 * 1000;
 
 // Global variables
 
 let sessionStartTime = Date.now();
-let totalStartTime = 0;
-let totalTime = 0;
+let scanStartTime = 0;
+let pureAllInfStartTime = 0;
+
 let ssDataUrlRaw = null;
 let currentDomain = null;
 
@@ -56,6 +57,7 @@ function saveLogsToFile() {
     });
 
     // Clear logs after saving (optional)
+    logs = [];
     chrome.storage.local.set({ logs: [] });
   });
 }
@@ -151,7 +153,7 @@ async function initBackground() {
       `[Background] - ${Date.now()} - Offscreen doc created in ${offscreenCreateTotalTime} ms`,
     );
     logMessage(
-      `[Background] - Offscreen doc created: ${offscreenCreateTotalTime} ms`,
+      `[Background] - offscreen doc creation time: ${offscreenCreateTotalTime} ms`,
     );
     // Load Tranco list at extension startup
     let loadTrancoStartTime = Date.now();
@@ -161,7 +163,7 @@ async function initBackground() {
       `[Background] - ${Date.now()} - Tranco List Loaded (${size} domains) in ${loadTrancoTotalTime} ms`,
     );
     logMessage(
-      `[Background] - Tranco list load time: ${loadTrancoTotalTime} ms`,
+      `[Background] - tranco list load time: ${loadTrancoTotalTime} ms`,
     );
     chrome.storage.session.set({ backgroundInitialized: true });
     let initBackgroundTotalTime = Date.now() - initBackgroundStartTime;
@@ -169,7 +171,7 @@ async function initBackground() {
       `[Background] - ${Date.now()} - Backgroung initialized in ${initBackgroundTotalTime} ms`,
     );
     logMessage(
-      `[Background] - Background initialized: ${initBackgroundTotalTime} ms`,
+      `[Background] - background init time: ${initBackgroundTotalTime} ms`,
     );
   } catch (error) {
     console.error(`[Background] - Error initializing background: ${error}`);
@@ -188,7 +190,13 @@ chrome.runtime.onConnect.addListener((port) => {
       if (message.type === 'infResponse') {
         console.log('[Background] - ' + Date.now() + ' - Received infResponse');
 
-        let totalTime = Date.now() - totalStartTime;
+        let pureAllInfTotalTime = Date.now() - pureAllInfStartTime;
+        console.log(
+          `[Background] - ${Date.now()} - Pure all inference completed in ${pureAllInfTotalTime} ms.`,
+        );
+        logMessage(
+          `[Background] - pure all inference time: ${pureAllInfTotalTime} ms`,
+        );
 
         const sessionData = {
           resizedDataUrl: message.data.resizedDataUrl, // For the screenshot <img>
@@ -197,8 +205,24 @@ chrome.runtime.onConnect.addListener((port) => {
           infTime: message.data.infTime,
           ocrText: message.data.ocrText,
           ocrTime: message.data.ocrTime,
-          totalTime: totalTime,
         };
+
+        console.log(
+          `[Background] - ${Date.now()} - Pure ONNX inference time: ${
+            message.data.infTime
+          } ms.`,
+        );
+        logMessage(
+          `[Background] - pure onnx inference time: ${message.data.infTime} ms`,
+        );
+        console.log(
+          `[Background] - ${Date.now()} - Pure OCR inference time ${
+            message.data.ocrTime
+          } ms.`,
+        );
+        logMessage(
+          `[Background] - pure ocr inference time: ${message.data.ocrTime} ms`,
+        );
 
         chrome.storage.session.set(sessionData, () => {
           console.log(
@@ -217,7 +241,7 @@ chrome.runtime.onConnect.addListener((port) => {
           } ms`,
         );
         logMessage(
-          `[Background] - ONNX worker created: ${message.data.onnxInitTime} ms`,
+          `[Background] - onnx worker creation time: ${message.data.onnxInitTime} ms`,
         );
         console.log(
           `[Background] - ${Date.now()} - Tokenizer initialized in ${
@@ -225,7 +249,7 @@ chrome.runtime.onConnect.addListener((port) => {
           } ms`,
         );
         logMessage(
-          `[Background] - Tokenizer initialized: ${message.data.tokenizerInitTime} ms`,
+          `[Background] - tokenizer initialization time: ${message.data.tokenizerInitTime} ms`,
         );
         console.log(
           `[Background] - ${Date.now()} - OCR initialized in ${
@@ -233,7 +257,7 @@ chrome.runtime.onConnect.addListener((port) => {
           } ms`,
         );
         logMessage(
-          `[Background] - OCR initialized: ${message.data.ocrInitTime} ms`,
+          `[Background] - ocr initialization time: ${message.data.ocrInitTime} ms`,
         );
         console.log(
           `[Background] - ${Date.now()} - Offscreen initialized in ${
@@ -241,7 +265,7 @@ chrome.runtime.onConnect.addListener((port) => {
           } ms`,
         );
         logMessage(
-          `[Background] - Offscreen initialized: ${message.data.offscreenInitTime} ms`,
+          `[Background] - offscreen initialization time: ${message.data.offscreenInitTime} ms`,
         );
       }
     });
@@ -298,7 +322,11 @@ async function saveScreenshot(dataUrl, baseDir, filename) {
 function injectContentScript() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs && tabs.length > 0 && tabs[0].id) {
-      console.log(`[Background] Injecting content.js into tab: ${tabs[0].id}`);
+      console.log(
+        `[Background] - ${Date.now()} - Injecting content.js into tab: ${
+          tabs[0].id
+        }`,
+      );
       chrome.scripting.executeScript({
         target: { tabId: tabs[0].id },
         files: ['content.js'],
@@ -308,12 +336,20 @@ function injectContentScript() {
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  // CASE 1: If classification changed to "malicious", reinject immediately.
   if (
     changes.classification &&
     changes.classification.newValue.split('_')[0] === 'malicious'
   ) {
     injectContentScript();
+    let case23TotalTime = Date.now() - scanStartTime;
+
+    chrome.storage.session.set({ totalTime: case23TotalTime });
+
+    console.log(
+      `[Background] - ${Date.now()} - Case 2 or 3 (phash = null | phash > thold) scan completed in ${case23TotalTime} ms.`,
+    );
+    logMessage(`[Background] - case 2 or 3 total time: ${case23TotalTime} ms`);
+
     chrome.storage.session.get(
       ['phash', 'classification', 'currentDomain'],
       (result) => {
@@ -455,24 +491,39 @@ function getCurrentTabDomain(callback) {
 
 // Inference Init Function
 async function startInference() {
-  const startTakeSsTime = Date.now();
+  // Capturing screenshot
+  let startTakeSsTime = Date.now();
   ssDataUrlRaw = await captureScreenshot();
   chrome.storage.local.set({ dataUrl: ssDataUrlRaw });
-  const takeSsTime = Date.now() - startTakeSsTime;
+  let takeSsTime = Date.now() - startTakeSsTime;
   console.log(
     `[Background] - ${Date.now()} - Time to take screenshot: ${takeSsTime} ms`,
   );
+  logMessage(`[Background] - screenshot capture time: ${takeSsTime} ms`);
 
+  // Computing phash
+  let phashStartTime = Date.now();
   let phashNew = await getImagePHash(ssDataUrlRaw);
+  let phashTotalTime = Date.now() - phashStartTime;
+  console.log(
+    `[Background] - ${Date.now()} - Time to phash: ${phashTotalTime} ms`,
+  );
+  logMessage(`[Background] - phash computation time: ${phashTotalTime} ms`);
+
+  // Selecting appropriate case
   chrome.storage.session.get(['phash'], (result) => {
     let phashCurrent = result.phash;
     console.log(`[Background] Retrieved phash value: ${phashCurrent}`);
+    // CASE 2 - No phash -> inference
     if (phashCurrent === null || phashCurrent === 'NA') {
+      pureAllInfStartTime = Date.now();
       sendSsDataToOffscreen(ssDataUrlRaw);
       chrome.storage.session.set({ phash: phashNew, hammingDistance: null });
     } else {
       let hammingDistance = getHammingDistance(phashCurrent, phashNew);
+      // CASE 3 - HD > thold -> inference
       if (hammingDistance >= HAMMING_DIST_THOLD) {
+        pureAllInfStartTime = Date.now();
         sendSsDataToOffscreen(ssDataUrlRaw);
         chrome.storage.session.set({ phash: phashNew, hammingDistance }, () => {
           console.log(
@@ -481,7 +532,13 @@ async function startInference() {
               ' - Updated session: Phash greater than threshold',
           );
         });
+        // CASE 4 - phash < thold -> keep current classification
       } else {
+        let case4TotalTime = Date.now() - scanStartTime;
+        console.log(
+          `[Background] - ${Date.now()} - Case 4 (phash < thold) scan complete in ${case4TotalTime} ms.`,
+        );
+        logMessage(`[Background] - case 4 total time: ${case4TotalTime} ms`);
         const sessionData = {
           resizedDataUrl: 'NA',
           method: 'Phash less than threshold',
@@ -489,7 +546,7 @@ async function startInference() {
           ocrText: 'NA',
           ocrTime: 'NA',
           hammingDistance,
-          totalTime: Date.now() - totalStartTime,
+          totalTime: case4TotalTime,
         };
         chrome.storage.session.set(sessionData, () => {
           console.log(
@@ -523,7 +580,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
             `[Background] - Initialization completed in ${initTotalTime} ms`,
           );
           logMessage(
-            `[Background] - Initialization completed: ${initTotalTime} ms`,
+            `[Background] - initialization completion time: ${initTotalTime} ms`,
           );
           runScans();
         }
@@ -540,15 +597,17 @@ function runScans() {
       if (data.mainToggleState) {
         console.log('[Background] - ' + Date.now() + ' - Toggle is ON.');
 
-        totalStartTime = Date.now();
+        scanStartTime = Date.now();
 
         getCurrentTabDomain((domain) => {
           currentDomain = domain;
+          // CASE 1
           if (trancoSet.has(domain)) {
             // if (false) {
             console.log(
               `[Background] - ${Date.now()} - Domain in Tranco set: ${domain}`,
             );
+            let case1TotalTime = Date.now() - scanStartTime;
             const sessionData = {
               resizedDataUrl: 'NA',
               classification: 'benign',
@@ -558,7 +617,7 @@ function runScans() {
               ocrTime: 'NA',
               phash: 'NA',
               hammingDistance: 'NA',
-              totalTime: Date.now() - totalStartTime,
+              totalTime: case1TotalTime,
             };
             chrome.storage.session.set(sessionData, () => {
               console.log(
@@ -567,10 +626,11 @@ function runScans() {
                   ' - Session updated for: Tranco whitelist.',
               );
             });
-
-            let case1TotalTime = Date.now() - totalStartTime;
             console.log(
-              `[Background] - ${Date.now()} - Domain in Tranco set: ${domain}`,
+              `[Background] - ${Date.now()} - Case 1 (white list) scan completed in ${case1TotalTime} ms`,
+            );
+            logMessage(
+              `[Background] - case 1 total time: ${case1TotalTime} ms`,
             );
 
             saveScreenshot(
