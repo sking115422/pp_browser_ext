@@ -33,13 +33,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     onnxWorker = new Worker(chrome.runtime.getURL('onnx_worker.js'), {
       type: 'module',
     });
-    onnxWorkerTotalTime = Date.now() - onnxWorkerStartTime;
-    console.log(
-      `[Offscreen] - ${Date.now()} - ONNX worker instantiated in ${onnxWorkerTotalTime} ms.`,
-    );
   } catch (err) {
     console.error('[Offscreen] Error instantiating ONNX worker:', err);
   }
+
+  await new Promise((resolve) => {
+    onnxWorker.onmessage = (event) => {
+      if (event.data.type === 'onnxWorkInitialized') {
+        resolve();
+        onnxWorkerTotalTime = Date.now() - onnxWorkerStartTime;
+        console.log(
+          `[Offscreen] - ${Date.now()} - ONNX worker instantiated in ${onnxWorkerTotalTime} ms.`,
+        );
+      }
+    };
+  });
 
   // Initialize the tokenizer.
   let tokenizer;

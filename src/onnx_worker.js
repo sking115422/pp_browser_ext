@@ -2,6 +2,7 @@
 import * as ort from 'onnxruntime-web';
 
 console.log('[ONNX Worker] - ' + Date.now() + ' - Worker started.');
+self.postMessage({ type: 'onnxWorkInitialized' });
 
 self.onmessage = async (e) => {
   console.log('[ONNX Worker] - ' + Date.now() + ' - Message received:', e.data);

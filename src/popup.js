@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the Performance Logging state
   chrome.storage.local.get('performanceToggleState', (data) => {
-    updatePerformanceLoggingToggle(data.performanceToggleState ?? false);
+    updatePerformanceLoggingToggle(data.performanceToggleState ?? true);
   });
 
   // Event listener for Performance Logging toggle button

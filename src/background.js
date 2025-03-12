@@ -136,7 +136,15 @@ async function initBackground() {
   try {
     let initBackgroundStartTime = Date.now();
     // Creating offscreen doc
+    let offscreenCreateStartTime = Date.now();
     await ensureOffscreen();
+    let offscreenCreateTotalTime = Date.now() - offscreenCreateStartTime;
+    console.log(
+      `[Background] - ${Date.now()} - offscreen doc created in ${offscreenCreateTotalTime} ms`,
+    );
+    logMessage(
+      `[Background] - offscreen doc created: ${offscreenCreateTotalTime} ms`,
+    );
     // Load Tranco list at extension startup
     let loadTrancoStartTime = Date.now();
     let size = await loadTrancoIntoMemory();
@@ -145,7 +153,7 @@ async function initBackground() {
       `[Background] - ${Date.now()} - Tranco List Loaded (${size} domains) in ${loadTrancoTotalTime} ms`,
     );
     logMessage(
-      `[Background] - Time taken to load Tranco List: ${loadTrancoTotalTime} ms`,
+      `[Background] - Tranco list load time: ${loadTrancoTotalTime} ms`,
     );
     chrome.storage.session.set({ backgroundInitialized: true });
     let initBackgroundTotalTime = Date.now() - initBackgroundStartTime;
@@ -153,7 +161,7 @@ async function initBackground() {
       `[Background] - ${Date.now()} - Backgroung initialized in ${initBackgroundTotalTime} ms`,
     );
     logMessage(
-      `[Background] - Backgroung initialized in ${initBackgroundTotalTime} ms`,
+      `[Background] - Background initialized: ${initBackgroundTotalTime} ms`,
     );
   } catch (error) {
     console.error(`[Background] - Error initializing background: ${error}`);
@@ -195,7 +203,38 @@ chrome.runtime.onConnect.addListener((port) => {
       // Offscreen init feedback
       if (message.type === 'offscreenInit') {
         chrome.storage.session.set({ offscreenInitialized: true });
-        console.log('offscreenInit', message.data);
+        console.log(
+          `[Background] - ${Date.now()} - ONNX worker created in ${
+            message.data.onnxInitTime
+          } ms`,
+        );
+        logMessage(
+          `[Background] - ONNX worker created: ${message.data.onnxInitTime} ms`,
+        );
+        console.log(
+          `[Background] - ${Date.now()} - Tokenizer initialized in ${
+            message.data.tokenizerInitTime
+          } ms`,
+        );
+        logMessage(
+          `[Background] - Tokenizer initialized: ${message.data.tokenizerInitTime} ms`,
+        );
+        console.log(
+          `[Background] - ${Date.now()} - OCR initialized in ${
+            message.data.ocrInitTime
+          } ms`,
+        );
+        logMessage(
+          `[Background] - OCR initialized: ${message.data.ocrInitTime} ms`,
+        );
+        console.log(
+          `[Background] - ${Date.now()} - Offscreen initialized in ${
+            message.data.offscreenInitTime
+          } ms`,
+        );
+        logMessage(
+          `[Background] - Offscreen initialized: ${message.data.offscreenInitTime} ms`,
+        );
       }
     });
 
@@ -467,7 +506,6 @@ async function startInference() {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes.offscreenInitialized || changes.backgroundInitialized) {
-    console.log('changes', changes);
     chrome.storage.session.get(
       ['offscreenInitialized', 'backgroundInitialized'],
       (result) => {
@@ -475,6 +513,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
           let initTotalTime = Date.now() - sessionStartTime;
           console.log(
             `[Background] - initialization completed in ${initTotalTime} ms`,
+          );
+          logMessage(
+            `[Background] - initialization completed: ${initTotalTime} ms`,
           );
           runScans();
         }
@@ -518,6 +559,11 @@ function runScans() {
                   ' - Session updated for: Tranco whitelist.',
               );
             });
+
+            let case1TotalTime = Date.now() - totalStartTime;
+            console.log(
+              `[Background] - ${Date.now()} - Domain in Tranco set: ${domain}`,
+            );
 
             saveScreenshot(
               ssDataUrlRaw,
