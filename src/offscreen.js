@@ -2,6 +2,8 @@
 
 // Global Variables
 
+let offscreenStartTime = Date.now();
+
 const IMG_SIZE = { width: 1920, height: 1080 };
 const IMG_PROC_SCALE_FACTOR = 0.5;
 const IMG_OCR_SCALE_FACTOR = 0.75;
@@ -13,44 +15,71 @@ console.log('[Offscreen] - ' + Date.now() + ' - Offscreen document loaded.');
 
 import { AutoTokenizer } from '@xenova/transformers';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const sandboxIframe = document.getElementById('sandboxIframe');
   if (!sandboxIframe) {
     console.error('[Offscreen] - sandboxIframe not found in DOM.');
+    return;
   }
 
-  // Open a long-lived offscreenPort to the background script
+  // Open a long-lived offscreenPort to the background script.
   const offscreenPort = chrome.runtime.connect({ name: 'offscreenPort' });
 
-  // Init ONNX worker
-
-  let onnxWorker = null;
+  // Initialize the ONNX worker.
+  let onnxWorker;
+  let onnxWorkerStartTime = Date.now();
+  let onnxWorkerTotalTime = null;
   try {
     onnxWorker = new Worker(chrome.runtime.getURL('onnx_worker.js'), {
       type: 'module',
     });
-    console.log('[Offscreen] - ' + Date.now() + ' - ONNX worker instantiated.');
+    onnxWorkerTotalTime = Date.now() - onnxWorkerStartTime;
+    console.log(
+      `[Offscreen] - ${Date.now()} - ONNX worker instantiated in ${onnxWorkerTotalTime} ms.`,
+    );
   } catch (err) {
     console.error('[Offscreen] Error instantiating ONNX worker:', err);
   }
 
-  if (!onnxWorker) {
-    console.error('[Offscreen] ONNX worker is not defined.');
-  } else {
-    onnxWorker.onerror = (err) => {
-      console.error('[Offscreen] ONNX worker error:', err);
-    };
+  // Initialize the tokenizer.
+  let tokenizer;
+  let tokenizerStartTime = Date.now();
+  let tokenizerTotalTime = null;
+  try {
+    tokenizer = await AutoTokenizer.from_pretrained('bert_mini_tokenizer');
+    tokenizerTotalTime = Date.now() - tokenizerStartTime;
+    console.log(
+      `[Offscreen] - ${Date.now()} - Tokenizer loaded in ${tokenizerTotalTime} ms.`,
+    );
+  } catch (err) {
+    console.error('[Offscreen] Error loading tokenizer:', err);
   }
 
-  // Init tokenizer
+  let ocrTotalTime = null;
+  const waitForOcrInit = new Promise((resolve) => {
+    function handleOcrInit(event) {
+      if (event.data.type === 'ocrInit') {
+        ocrTotalTime = event.data.message;
+        console.log(`[Offscreen] - OCR initialized in ${ocrTotalTime} ms.`);
+        window.removeEventListener('message', handleOcrInit);
+        resolve();
+      }
+    }
+    window.addEventListener('message', handleOcrInit);
+  });
+  await waitForOcrInit;
 
-  let tokenizer;
-  AutoTokenizer.from_pretrained('bert_mini_tokenizer')
-    .then((tknzr) => {
-      tokenizer = tknzr;
-      console.log('[Offscreen] - ' + Date.now() + ' - Tokenizer loaded.');
-    })
-    .catch((err) => console.error('[Offscreen] Error loading tokenizer:', err));
+  let offscreenInitTotalTime = Date.now() - offscreenStartTime;
+  // Now that all initialization steps are complete, send the offscreenInit message.
+  offscreenPort.postMessage({
+    type: 'offscreenInit',
+    data: {
+      onnxInitTime: onnxWorkerTotalTime,
+      tokenizerInitTime: tokenizerTotalTime,
+      ocrInitTime: ocrTotalTime,
+      offscreenInitTime: offscreenInitTotalTime,
+    },
+  });
 
   // Functions
 
@@ -224,9 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
         tokenTime +
         ' ms',
     );
-
-    console.log('ssDataProcessed:', ssDataProcessed);
-    console.log('tokenized:', tokenized);
 
     // Build payload using transferable buffers.
     const inputIdsBuffer = tokenized.input_ids.data.buffer; // Assumed to be an ArrayBuffer or use .buffer if needed

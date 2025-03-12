@@ -1,11 +1,8 @@
 // src/sandbox.js
-console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
 
-// Notify parent (popup) that the sandbox is active.
-window.parent.postMessage(
-  { type: 'sandboxLoaded', message: 'Sandbox document is active.' },
-  '*',
-);
+let sandboxStartTime = Date.now();
+
+console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
 
 (async () => {
   try {
@@ -29,6 +26,11 @@ window.parent.postMessage(
     }
     console.log(
       `[Sandbox] Scheduler - ${Date.now()} - initialized with ${totalPieces} workers.`,
+    );
+
+    window.parent.postMessage(
+      { type: 'ocrInit', message: Date.now() - sandboxStartTime },
+      '*',
     );
 
     // Helper function to crop the image.
@@ -124,8 +126,6 @@ window.parent.postMessage(
                 }));
             });
             const results = await Promise.all(jobPromises);
-
-            console.log('results', results);
 
             // Sort results by row then column.
             results.sort((a, b) => {
