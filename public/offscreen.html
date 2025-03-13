@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
-    <title>Offscreen Document</title>
+    <meta charset="UTF-8">
+    <title>Offscreen Inference</title>
   </head>
   <body>
     <script type="module" src="offscreen.js"></script>
+    <!-- Hidden sandbox iframe for OCR processing -->
+    <iframe id="sandboxIframe" src="sandbox.html" sandbox="allow-scripts allow-same-origin" style="display:none;"></iframe>
   </body>
 </html>

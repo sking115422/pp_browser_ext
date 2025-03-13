@@ -7,12 +7,65 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <h1>SEGuard</h1>
-    <button id="toggleButton">Loading...</button>
-    <div id="inferenceResults">
-      <img id="screenshot" alt="Screenshot" style="width:224px; height:224px;" />
-      <p>Classification: <span id="classification">N/A</span></p>
-      <p>Inference Time: <span id="inferenceTime">N/A</span></p>
+    <div class="container">
+      <div>
+        <h1>SEGuard</h1>
+        <button id="mainToggle" class="normal-btn on">ON</button>
+      </div>
+
+      <div class="container-small-btn">
+        <div class="grid-container">
+          <span class="h3-custom">SS Logging</span>
+          <button id="ssLoggingToggle" class="small-btn off">OFF</button>
+          <span class="h3-custom">Performance Logging</span>
+          <button id="performanceLoggingToggle" class="small-btn off">
+            OFF
+          </button>
+        </div>
+      </div>
+
+      <div id="inferenceResults">
+        <div>
+          <img id="screenshot" alt="Screenshot" />
+        </div>
+        <div>
+          <p class="ocr-text">
+            <strong>OCR Text</strong>
+          </p>
+          <span id="ocrText">N/A</span>
+        </div>
+
+        <table>
+          <tr>
+            <td><strong>Phash:</strong></td>
+            <td id="phash">NA</td>
+          </tr>
+          <tr>
+            <td><strong>Hamming Distance:</strong></td>
+            <td id="hammingDistance">NA</td>
+          </tr>
+          <tr>
+            <td><strong>Classification:</strong></td>
+            <td id="classification">NA</td>
+          </tr>
+          <tr>
+            <td><strong>Method:</strong></td>
+            <td id="method">NA</td>
+          </tr>
+          <tr>
+            <td><strong>OCR Inference Time:</strong></td>
+            <td id="ocrTime">NA</td>
+          </tr>
+          <tr>
+            <td><strong>ONNX Inference Time:</strong></td>
+            <td id="onnxInferenceTime">NA</td>
+          </tr>
+          <tr>
+            <td><strong>Total Time:</strong></td>
+            <td id="totalTime">NA</td>
+          </tr>
+        </table>
+      </div>
     </div>
     <script src="./popup.js"></script>
   </body>
