@@ -4,3 +4,5 @@ ocr/models
 public/libs
 .DS_Store
 .prettierrc
+cdf/logs
+cdf/out
