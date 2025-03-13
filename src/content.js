@@ -49,6 +49,7 @@ function showDangerModal() {
   closeButton.style.cursor = 'pointer';
   closeButton.addEventListener('click', () => {
     console.log('[Content] Close button clicked, removing modal overlay');
+    chrome.runtime.sendMessage({ type: 'resumeScans' });
     modalOverlay.remove();
   });
   modalContainer.appendChild(closeButton);
@@ -74,6 +75,7 @@ function showDangerModal() {
     console.log(
       '[Content] Ignore Warning button clicked, removing modal overlay',
     );
+    chrome.runtime.sendMessage({ type: 'resumeScans' });
     modalOverlay.remove();
   });
 
@@ -84,11 +86,28 @@ function showDangerModal() {
     console.log(
       '[Content] Return to Safety button clicked, navigating to https://google.com',
     );
+    chrome.runtime.sendMessage({ type: 'resumeScans' });
     window.location.href = 'https://google.com';
+  });
+
+  // "Not Malicious" button – manually overrides malicious page classification
+  const notMalButton = document.createElement('button');
+  notMalButton.textContent = 'Not Malicious';
+  notMalButton.addEventListener('click', () => {
+    console.log(
+      '[Content] Not malicious button clicked, changing classification to benign',
+    );
+    chrome.storage.local.get(['classification'], (result) => {
+      let ts = result.classification.split('_')[1];
+      chrome.storage.local.set({ classification: `benign_${ts}` });
+    });
+    chrome.runtime.sendMessage({ type: 'resumeScans' });
+    modalOverlay.remove();
   });
 
   buttonsContainer.appendChild(ignoreButton);
   buttonsContainer.appendChild(returnButton);
+  buttonsContainer.appendChild(notMalButton);
 
   // Insert buttons container into modal container
   modalContainer.appendChild(buttonsContainer);

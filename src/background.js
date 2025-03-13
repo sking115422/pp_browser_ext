@@ -16,6 +16,7 @@ const SAVE_INTERVAL = 30 * 1000;
 let sessionStartTime = Date.now();
 let scanStartTime = 0;
 let pureAllInfStartTime = 0;
+let scanId = null;
 
 let ssDataUrlRaw = null;
 let currentDomain = null;
@@ -68,10 +69,6 @@ const initLocalData = {
   mainToggleState: false,
   ssToggleState: false,
   performanceToggleState: true,
-};
-
-// Initializing session data
-const initSessionData = {
   backgroundInitialized: false,
   offscreenInitialized: false,
   resizedDataUrl: null,
@@ -85,14 +82,7 @@ const initSessionData = {
   hammingDistance: null,
 };
 
-// Store the values in chrome.storage.session
-chrome.storage.session.set(initSessionData, () => {
-  console.log(
-    '[Background] - ' + Date.now() + ' - Session storage initialized',
-  );
-});
-
-// Store the values in chrome.storage.session
+// Store the values in chrome.storage.local
 chrome.storage.local.set(initLocalData, () => {
   console.log('[Background] - ' + Date.now() + ' - Local storage initialized');
 });
@@ -165,7 +155,7 @@ async function initBackground() {
     logMessage(
       `[Background] - tranco list load time: ${loadTrancoTotalTime} ms`,
     );
-    chrome.storage.session.set({ backgroundInitialized: true });
+    chrome.storage.local.set({ backgroundInitialized: true });
     let initBackgroundTotalTime = Date.now() - initBackgroundStartTime;
     console.log(
       `[Background] - ${Date.now()} - Backgroung initialized in ${initBackgroundTotalTime} ms`,
@@ -179,7 +169,7 @@ async function initBackground() {
 }
 initBackground();
 
-// Setting up message passing ports
+// Setting up message passing ports for heavier and more frequent messaging
 chrome.runtime.onConnect.addListener((port) => {
   console.log(`[Background] - ${Date.now()} - Connected to: ${port.name}`);
 
@@ -198,7 +188,7 @@ chrome.runtime.onConnect.addListener((port) => {
           `[Background] - pure all inference time: ${pureAllInfTotalTime} ms`,
         );
 
-        const sessionData = {
+        const infData = {
           resizedDataUrl: message.data.resizedDataUrl, // For the screenshot <img>
           classification: message.data.classification + '_' + Date.now(),
           method: 'Model inference',
@@ -224,17 +214,17 @@ chrome.runtime.onConnect.addListener((port) => {
           `[Background] - pure ocr inference time: ${message.data.ocrTime} ms`,
         );
 
-        chrome.storage.session.set(sessionData, () => {
+        chrome.storage.local.set(infData, () => {
           console.log(
             '[Background] - ' +
               Date.now() +
-              ' - Session storage updated with infResponse',
+              ' - Local storage updated with infResponse',
           );
         });
       }
       // Offscreen init feedback
       if (message.type === 'offscreenInit') {
-        chrome.storage.session.set({ offscreenInitialized: true });
+        chrome.storage.local.set({ offscreenInitialized: true });
         console.log(
           `[Background] - ${Date.now()} - ONNX worker created in ${
             message.data.onnxInitTime
@@ -274,6 +264,19 @@ chrome.runtime.onConnect.addListener((port) => {
       console.log('[Background] - ' + Date.now() + ' - Popup disconnected.');
       offscreenPort = null;
     });
+  }
+});
+
+// For light weight messaging
+// Listening for message to restart webpage scanning
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'resumeScans') {
+    console.log(
+      '[Background] - ' +
+        Date.now() +
+        ' - Resuming scan interval upon user interaction with popup',
+    );
+    runScans();
   }
 });
 
@@ -327,40 +330,54 @@ function injectContentScript() {
           tabs[0].id
         }`,
       );
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        files: ['content.js'],
-      });
+      chrome.scripting.executeScript(
+        {
+          target: { tabId: tabs[0].id },
+          files: ['content.js'],
+        },
+        () => {
+          // Pause the scanning interval once the content script is injected
+          if (scanId) {
+            clearInterval(scanId);
+            console.log('[Background] - Scanning paused.');
+          }
+        },
+      );
     }
   });
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (
-    changes.classification &&
-    changes.classification.newValue.split('_')[0] === 'malicious'
-  ) {
-    injectContentScript();
-    let case23TotalTime = Date.now() - scanStartTime;
+  if (areaName === 'local') {
+    // Injection content script if new malicious page is detected
+    if (
+      changes.classification &&
+      changes.classification.newValue.split('_')[0] === 'malicious'
+    ) {
+      injectContentScript();
+      let case23TotalTime = Date.now() - scanStartTime;
 
-    chrome.storage.session.set({ totalTime: case23TotalTime });
+      chrome.storage.local.set({ totalTime: case23TotalTime });
 
-    console.log(
-      `[Background] - ${Date.now()} - Case 2 or 3 (phash = null | phash > thold) scan completed in ${case23TotalTime} ms.`,
-    );
-    logMessage(`[Background] - case 2 or 3 total time: ${case23TotalTime} ms`);
+      console.log(
+        `[Background] - ${Date.now()} - Case 2 or 3 (phash = null | phash > thold) scan completed in ${case23TotalTime} ms.`,
+      );
+      logMessage(
+        `[Background] - case 2 or 3 total time: ${case23TotalTime} ms`,
+      );
 
-    chrome.storage.session.get(
-      ['phash', 'classification', 'currentDomain'],
-      (result) => {
-        saveScreenshot(
-          ssDataUrlRaw,
-          `${sessionStartTime}/${result.classification.split('_')[0]}`,
-          `${currentDomain}_${result.phash}_${Date.now()}`,
-        );
-      },
-    );
-    return;
+      chrome.storage.local.get(
+        ['phash', 'classification', 'currentDomain'],
+        (result) => {
+          saveScreenshot(
+            ssDataUrlRaw,
+            `${sessionStartTime}/${result.classification.split('_')[0]}`,
+            `${currentDomain}_${result.phash}_${Date.now()}`,
+          );
+        },
+      );
+      return;
+    }
   }
 });
 
@@ -511,25 +528,25 @@ async function startInference() {
   logMessage(`[Background] - phash computation time: ${phashTotalTime} ms`);
 
   // Selecting appropriate case
-  chrome.storage.session.get(['phash'], (result) => {
+  chrome.storage.local.get(['phash'], (result) => {
     let phashCurrent = result.phash;
     console.log(`[Background] Retrieved phash value: ${phashCurrent}`);
     // CASE 2 - No phash -> inference
     if (phashCurrent === null || phashCurrent === 'NA') {
       pureAllInfStartTime = Date.now();
       sendSsDataToOffscreen(ssDataUrlRaw);
-      chrome.storage.session.set({ phash: phashNew, hammingDistance: null });
+      chrome.storage.local.set({ phash: phashNew, hammingDistance: null });
     } else {
       let hammingDistance = getHammingDistance(phashCurrent, phashNew);
       // CASE 3 - HD > thold -> inference
       if (hammingDistance >= HAMMING_DIST_THOLD) {
         pureAllInfStartTime = Date.now();
         sendSsDataToOffscreen(ssDataUrlRaw);
-        chrome.storage.session.set({ phash: phashNew, hammingDistance }, () => {
+        chrome.storage.local.set({ phash: phashNew, hammingDistance }, () => {
           console.log(
             '[Background] - ' +
               Date.now() +
-              ' - Updated session: Phash greater than threshold',
+              ' - Updated local storage: Phash greater than threshold',
           );
         });
         // CASE 4 - phash < thold -> keep current classification
@@ -539,7 +556,7 @@ async function startInference() {
           `[Background] - ${Date.now()} - Case 4 (phash < thold) scan complete in ${case4TotalTime} ms.`,
         );
         logMessage(`[Background] - case 4 total time: ${case4TotalTime} ms`);
-        const sessionData = {
+        const case4Data = {
           resizedDataUrl: 'NA',
           method: 'Phash less than threshold',
           infTime: 'NA',
@@ -548,14 +565,14 @@ async function startInference() {
           hammingDistance,
           totalTime: case4TotalTime,
         };
-        chrome.storage.session.set(sessionData, () => {
+        chrome.storage.local.set(case4Data, () => {
           console.log(
             '[Background] - ' +
               Date.now() +
-              ' - Session updated for: Phash less than threshold.',
+              ' - Local storage updated: (Case 4) Phash less than threshold.',
           );
         });
-        chrome.storage.session.get(['phash', 'classification'], (result) => {
+        chrome.storage.local.get(['phash', 'classification'], (result) => {
           saveScreenshot(
             ssDataUrlRaw,
             `${sessionStartTime}/${result.classification.split('_')[0]}`,
@@ -571,7 +588,7 @@ async function startInference() {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes.offscreenInitialized || changes.backgroundInitialized) {
-    chrome.storage.session.get(
+    chrome.storage.local.get(
       ['offscreenInitialized', 'backgroundInitialized'],
       (result) => {
         if (result.offscreenInitialized && result.backgroundInitialized) {
@@ -592,7 +609,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 // Main function
 function runScans() {
-  setInterval(() => {
+  scanId = setInterval(() => {
     chrome.storage.local.get(['mainToggleState'], (data) => {
       if (data.mainToggleState) {
         console.log('[Background] - ' + Date.now() + ' - Toggle is ON.');
@@ -608,7 +625,7 @@ function runScans() {
               `[Background] - ${Date.now()} - Domain in Tranco set: ${domain}`,
             );
             let case1TotalTime = Date.now() - scanStartTime;
-            const sessionData = {
+            const case1Data = {
               resizedDataUrl: 'NA',
               classification: 'benign',
               method: `Tranco whitelist - ${domain}`,
@@ -619,11 +636,11 @@ function runScans() {
               hammingDistance: 'NA',
               totalTime: case1TotalTime,
             };
-            chrome.storage.session.set(sessionData, () => {
+            chrome.storage.local.set(case1Data, () => {
               console.log(
                 '[Background] - ' +
                   Date.now() +
-                  ' - Session updated for: Tranco whitelist.',
+                  ' - Local storage updated: (Case 1) Tranco whitelist.',
               );
             });
             console.log(
@@ -650,15 +667,16 @@ function runScans() {
       }
     });
   }, SCAN_INTERVAL);
-
-  setInterval(() => {
-    chrome.storage.local.get(
-      ['mainToggleState', 'performanceToggleState'],
-      (data) => {
-        if (data.performanceToggleState) {
-          saveLogsToFile();
-        }
-      },
-    );
-  }, SAVE_INTERVAL);
 }
+
+// Performance logging
+setInterval(() => {
+  chrome.storage.local.get(
+    ['mainToggleState', 'performanceToggleState'],
+    (data) => {
+      if (data.performanceToggleState) {
+        saveLogsToFile();
+      }
+    },
+  );
+}, SAVE_INTERVAL);

@@ -122,46 +122,44 @@ document.addEventListener('DOMContentLoaded', () => {
       : 'NA';
   }
 
-  // On load, read the session data and update the popup UI.
-  chrome.storage.session.get(null, (sessionData) => {
-    if (sessionData) {
-      if (sessionData.resizedDataUrl) {
-        screenshotEl.src = formatNonTime(sessionData.resizedDataUrl);
+  // On load, read the local data and update the popup UI.
+  chrome.storage.local.get(null, (localData) => {
+    if (localData) {
+      if (localData.resizedDataUrl) {
+        screenshotEl.src = formatNonTime(localData.resizedDataUrl);
       }
-      if (sessionData.phash) {
-        phashEl.textContent = formatNonTime(sessionData.phash);
+      if (localData.phash) {
+        phashEl.textContent = formatNonTime(localData.phash);
       }
-      if (sessionData.hammingDistance) {
+      if (localData.hammingDistance) {
         hammingDistanceEl.textContent = formatNonTime(
-          sessionData.hammingDistance,
+          localData.hammingDistance,
         );
       }
-      if (sessionData.ocrText) {
-        ocrTextEl.textContent = formatNonTime(sessionData.ocrText);
+      if (localData.ocrText) {
+        ocrTextEl.textContent = formatNonTime(localData.ocrText);
       }
-      if (sessionData.classification) {
-        classificationEl.textContent = formatNonTime(
-          sessionData.classification,
-        );
+      if (localData.classification) {
+        classificationEl.textContent = formatNonTime(localData.classification);
       }
-      if (sessionData.method) {
-        methodEl.textContent = formatNonTime(sessionData.method);
+      if (localData.method) {
+        methodEl.textContent = formatNonTime(localData.method);
       }
-      if (sessionData.ocrTime) {
-        ocrTimeEl.textContent = formatTime(sessionData.ocrTime);
+      if (localData.ocrTime) {
+        ocrTimeEl.textContent = formatTime(localData.ocrTime);
       }
-      if (sessionData.infTime) {
-        onnxInferenceTimeEl.textContent = formatTime(sessionData.infTime);
+      if (localData.infTime) {
+        onnxInferenceTimeEl.textContent = formatTime(localData.infTime);
       }
-      if (sessionData.totalTime) {
-        totalTimeEl.textContent = formatTime(sessionData.totalTime);
+      if (localData.totalTime) {
+        totalTimeEl.textContent = formatTime(localData.totalTime);
       }
     }
   });
 
-  // Listen for changes in session storage to update the UI in real-time.
+  // Listen for changes in local storage to update the UI in real-time.
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'session') {
+    if (area === 'local') {
       if (changes.resizedDataUrl) {
         screenshotEl.src = formatNonTime(changes.resizedDataUrl.newValue);
       }
