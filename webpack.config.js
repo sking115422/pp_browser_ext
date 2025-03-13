@@ -10,6 +10,7 @@ module.exports = {
     onnx_worker: './src/onnx_worker.js',
     offscreen: './src/offscreen.js',
     content: './src/content.js',
+    utils: './src/utils.js',
   },
   output: {
     path: path.resolve(__dirname, 'dist'),

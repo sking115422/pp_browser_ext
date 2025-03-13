@@ -1,11 +1,15 @@
 // src/onnx_worker.js
 import * as ort from 'onnxruntime-web';
+import { getHrTimestamp } from './utils';
 
-console.log('[ONNX Worker] - ' + Date.now() + ' - Worker started.');
+console.log('[ONNX Worker] - ' + getHrTimestamp() + ' - Worker started.');
 self.postMessage({ type: 'onnxWorkInitialized' });
 
 self.onmessage = async (e) => {
-  console.log('[ONNX Worker] - ' + Date.now() + ' - Message received:', e.data);
+  console.log(
+    '[ONNX Worker] - ' + getHrTimestamp() + ' - Message received:',
+    e.data,
+  );
   if (e.data.type === 'runInference') {
     const { payload } = e.data;
     try {
@@ -39,7 +43,7 @@ self.onmessage = async (e) => {
       };
 
       console.log(
-        '[ONNX Worker] - ' + Date.now() + ' - Model input (feeds):',
+        '[ONNX Worker] - ' + getHrTimestamp() + ' - Model input (feeds):',
         feeds,
       );
 
@@ -50,14 +54,16 @@ self.onmessage = async (e) => {
           import.meta.url,
         ).toString();
         console.log(
-          '[ONNX Worker] - ' + Date.now() + ' - Loading model from:',
+          '[ONNX Worker] - ' + getHrTimestamp() + ' - Loading model from:',
           modelUrl,
         );
         self.session = await ort.InferenceSession.create(modelUrl);
-        console.log('[ONNX Worker] - ' + Date.now() + ' - Model loaded.');
+        console.log('[ONNX Worker] - ' + getHrTimestamp() + ' - Model loaded.');
       }
       const session = self.session;
-      console.log('[ONNX Worker] - ' + Date.now() + ' - Running inference...');
+      console.log(
+        '[ONNX Worker] - ' + getHrTimestamp() + ' - Running inference...',
+      );
       const start = Date.now();
       const output = await session.run(feeds);
       const onnxInferenceTime = Date.now() - start;
@@ -68,7 +74,7 @@ self.onmessage = async (e) => {
       }
       console.log(
         '[ONNX Worker] - ' +
-          Date.now() +
+          getHrTimestamp() +
           ' - Inference complete. Classification:',
         classification,
         'Time:',

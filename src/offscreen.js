@@ -9,11 +9,14 @@ const IMG_PROC_SCALE_FACTOR = 0.5;
 const IMG_OCR_SCALE_FACTOR = 0.75;
 const MAX_TOKEN_LENGTH = 512;
 
-console.log('[Offscreen] - ' + Date.now() + ' - Offscreen document loaded.');
+console.log(
+  '[Offscreen] - ' + getHrTimestamp() + ' - Offscreen document loaded.',
+);
 
 // Imports
 
 import { AutoTokenizer } from '@xenova/transformers';
+import { getHrTimestamp } from './utils';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const sandboxIframe = document.getElementById('sandboxIframe');
@@ -43,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         resolve();
         onnxWorkerTotalTime = Date.now() - onnxWorkerStartTime;
         console.log(
-          `[Offscreen] - ${Date.now()} - ONNX worker instantiated in ${onnxWorkerTotalTime} ms.`,
+          `[Offscreen] - ${getHrTimestamp()} - ONNX worker instantiated in ${onnxWorkerTotalTime} ms.`,
         );
       }
     };
@@ -57,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tokenizer = await AutoTokenizer.from_pretrained('bert_mini_tokenizer');
     tokenizerTotalTime = Date.now() - tokenizerStartTime;
     console.log(
-      `[Offscreen] - ${Date.now()} - Tokenizer loaded in ${tokenizerTotalTime} ms.`,
+      `[Offscreen] - ${getHrTimestamp()} - Tokenizer loaded in ${tokenizerTotalTime} ms.`,
     );
   } catch (err) {
     console.error('[Offscreen] Error loading tokenizer:', err);
@@ -118,7 +121,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const img = new Image();
       img.onload = () => {
         console.log(
-          '[Offscreen] - ' + Date.now() + ' - Image loaded for processing.',
+          '[Offscreen] - ' +
+            getHrTimestamp() +
+            ' - Image loaded for processing.',
         );
         const origWidth = img.naturalWidth;
         const origHeight = img.naturalHeight;
@@ -256,7 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tokenTime = endTokenTime - startTokenTime;
     console.log(
       '[Offscreen] - ' +
-        Date.now() +
+        getHrTimestamp() +
         ' - Time to tokenize OCR text: ' +
         tokenTime +
         ' ms',
@@ -294,7 +299,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     console.log(
-      '[Offscreen] - ' + Date.now() + ' - Inference result from ONNX worker:',
+      '[Offscreen] - ' +
+        getHrTimestamp() +
+        ' - Inference result from ONNX worker:',
       inferenceResponse,
     );
 
@@ -313,7 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   offscreenPort.onMessage.addListener((message) => {
     if (message.type === 'ssDataUrlRaw') {
       console.log(
-        '[Offscreen] - ' + Date.now() + ' - Received screenshot.',
+        '[Offscreen] - ' + getHrTimestamp() + ' - Received screenshot.',
         message,
       );
       runInference(message.data);

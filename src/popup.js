@@ -1,10 +1,12 @@
 // src/popup.js
 
+import { getHrTimestamp } from './utils';
+
 document.addEventListener('DOMContentLoaded', () => {
   // Connecting for port messaging (if needed for other communication)
   const popupPort = chrome.runtime.connect({ name: 'popup' });
 
-  console.log('[Popup] - ' + Date.now() + ' - Popup loaded.');
+  console.log('[Popup] - ' + getHrTimestamp() + ' - Popup loaded.');
   const screenshotEl = document.getElementById('screenshot');
   const phashEl = document.getElementById('phash');
   const hammingDistanceEl = document.getElementById('hammingDistance');
@@ -34,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.storage.local.set({ mainToggleState: newState }, () => {
         updateToggleButton(newState);
         console.log(
-          '[Popup] - ' + Date.now() + ' - Toggle state updated:',
+          '[Popup] - ' + getHrTimestamp() + ' - Toggle state updated:',
           newState,
         );
       });
@@ -46,7 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
     mainToggle.textContent = isOn ? 'ON' : 'OFF';
     mainToggle.classList.remove('on', 'off');
     mainToggle.classList.add(isOn ? 'on' : 'off');
-    console.log('[Popup] - ' + Date.now() + ' - Toggle button updated:', isOn);
+    console.log(
+      '[Popup] - ' + getHrTimestamp() + ' - Toggle button updated:',
+      isOn,
+    );
   }
 
   ////// SS Logging Toggle
@@ -63,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.storage.local.set({ ssToggleState: newState }, () => {
         updateSsLoggingToggle(newState);
         console.log(
-          '[Popup] - ' + Date.now() + ' - SS Logging state updated:',
+          '[Popup] - ' + getHrTimestamp() + ' - SS Logging state updated:',
           newState,
         );
       });
@@ -76,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ssLoggingToggle.classList.remove('on', 'off');
     ssLoggingToggle.classList.add(isOn ? 'on' : 'off');
     console.log(
-      '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
+      '[Popup] - ' + getHrTimestamp() + ' - SS Logging button updated:',
       isOn,
     );
   }
@@ -95,7 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.storage.local.set({ performanceToggleState: newState }, () => {
         updatePerformanceLoggingToggle(newState);
         console.log(
-          '[Popup] - ' + Date.now() + ' - Performance Logging state updated:',
+          '[Popup] - ' +
+            getHrTimestamp() +
+            ' - Performance Logging state updated:',
           newState,
         );
       });
@@ -108,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     performanceLoggingToggle.classList.remove('on', 'off');
     performanceLoggingToggle.classList.add(isOn ? 'on' : 'off');
     console.log(
-      '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
+      '[Popup] - ' + getHrTimestamp() + ' - SS Logging button updated:',
       isOn,
     );
   }

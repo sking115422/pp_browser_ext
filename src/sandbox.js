@@ -2,13 +2,15 @@
 
 let sandboxStartTime = Date.now();
 
-console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
+console.log('[Sandbox] - ' + getHrTimestamp() + ' - Sandbox document loaded.');
+
+import { getHrTimestamp } from './utils';
 
 (async () => {
   try {
     console.log(
       '[Sandbox] - ' +
-        Date.now() +
+        getHrTimestamp() +
         ' - Initializing Tesseract scheduler with dynamic grid workers',
     );
     const { createScheduler, createWorker } = Tesseract;
@@ -25,7 +27,7 @@ console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
       scheduler.addWorker(worker);
     }
     console.log(
-      `[Sandbox] Scheduler - ${Date.now()} - initialized with ${totalPieces} workers.`,
+      `[Sandbox] Scheduler - ${getHrTimestamp()} - initialized with ${totalPieces} workers.`,
     );
 
     window.parent.postMessage(
@@ -65,10 +67,10 @@ console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
       const message = event.data;
       if (message.type === 'ssDataUrlRaw' && message.dataUrl) {
         console.log(
-          '[Sandbox] - ' + Date.now() + ' - Received screenshot for OCR.',
+          '[Sandbox] - ' + getHrTimestamp() + ' - Received screenshot for OCR.',
         );
 
-        const startTime = Date.now();
+        let startTime = Date.now();
 
         // Create an image to determine its dimensions.
         const img = new Image();
@@ -77,7 +79,7 @@ console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
           const width = img.naturalWidth;
           const height = img.naturalHeight;
           console.log(
-            '[Sandbox] - ' + Date.now() + ' - Image dimensions:',
+            '[Sandbox] - ' + getHrTimestamp() + ' - Image dimensions:',
             width,
             height,
           );
@@ -104,7 +106,7 @@ console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
             }
           }
           console.log(
-            '[Sandbox] - ' + Date.now() + ' - Defined job rectangles:',
+            '[Sandbox] - ' + getHrTimestamp() + ' - Defined job rectangles:',
             jobs,
           );
 
@@ -137,10 +139,10 @@ console.log('[Sandbox] - ' + Date.now() + ' - Sandbox document loaded.');
 
             // Concatenate the text in row-major order.
             const combinedText = results.map((r) => r.text).join(' ');
-            const endTime = Date.now();
+            let endTime = Date.now();
             const ocrTime = endTime - startTime;
             console.log(
-              '[Sandbox] - ' + Date.now() + ' - OCR completed for grid:',
+              '[Sandbox] - ' + getHrTimestamp() + ' - OCR completed for grid:',
               combinedText,
               'Time:',
               ocrTime,

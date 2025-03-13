@@ -1,15 +1,19 @@
+import { getHrTimestamp } from './utils';
+
 function showDangerModal() {
-  console.log('[Content] showDangerModal called');
+  console.log('[Content] - ' + getHrTimestamp() + ' showDangerModal called');
 
   // Prevent multiple modals from being created
   if (document.getElementById('dangerModalOverlay')) {
     console.log(
-      '[Content] Danger modal already exists. Exiting showDangerModal.',
+      '[Content] - ' +
+        getHrTimestamp() +
+        ' Danger modal already exists. Exiting showDangerModal.',
     );
     return;
   }
 
-  console.log('[Content] Creating modal overlay');
+  console.log('[Content] - ' + getHrTimestamp() + ' Creating modal overlay');
 
   // Create the overlay covering the entire page
   const modalOverlay = document.createElement('div');
@@ -50,7 +54,7 @@ function showDangerModal() {
   document.body.appendChild(message);
 
   modalContainer.appendChild(message);
-  console.log('[Content] Warning message added');
+  console.log('[Content] - ' + getHrTimestamp() + ' Warning message added');
 
   // Create a container for the action buttons
   const buttonsContainer = document.createElement('div');
@@ -71,7 +75,9 @@ function showDangerModal() {
   ignoreButton.style.cursor = 'pointer';
   ignoreButton.addEventListener('click', () => {
     console.log(
-      '[Content] Ignore Warning button clicked, removing modal overlay',
+      '[Content] - ' +
+        getHrTimestamp() +
+        ' Ignore Warning button clicked, removing modal overlay',
     );
     chrome.runtime.sendMessage({ type: 'resumeScans' });
     modalOverlay.remove();
@@ -89,7 +95,9 @@ function showDangerModal() {
   returnButton.style.cursor = 'pointer';
   returnButton.addEventListener('click', () => {
     console.log(
-      '[Content] Return to Safety button clicked, navigating to https://google.com',
+      '[Content] - ' +
+        getHrTimestamp() +
+        ' Return to Safety button clicked, navigating to https://google.com',
     );
     chrome.runtime.sendMessage({ type: 'resumeScans' });
     window.location.href = 'https://google.com';
@@ -107,7 +115,9 @@ function showDangerModal() {
   notMalButton.style.cursor = 'pointer';
   notMalButton.addEventListener('click', () => {
     console.log(
-      '[Content] Not malicious button clicked, changing classification to benign',
+      '[Content] - ' +
+        getHrTimestamp() +
+        ' Not malicious button clicked, changing classification to benign',
     );
     chrome.storage.local.get(['classification'], (result) => {
       let ts = result.classification.split('_')[1];
@@ -134,7 +144,9 @@ function showDangerModal() {
   // Retrieve the screenshot data URL from storage and, if valid, set it as the source.
   chrome.storage.local.get('dataUrl', (result) => {
     console.log(
-      '[Content] dataUrl retrieved from local storage: ',
+      '[Content] - ' +
+        getHrTimestamp() +
+        ' dataUrl retrieved from local storage: ',
       result.dataUrl,
     );
     if (result.dataUrl && result.dataUrl !== 'NA') {
@@ -143,7 +155,9 @@ function showDangerModal() {
       modalContainer.insertBefore(screenshotImg, buttonsContainer);
     } else {
       console.warn(
-        '[Content] No valid screenshot data found in local storage.',
+        '[Content] - ' +
+          getHrTimestamp() +
+          ' No valid screenshot data found in local storage.',
       );
     }
   });
@@ -152,7 +166,11 @@ function showDangerModal() {
 
   // Append the modal overlay to the document body
   document.body.appendChild(modalOverlay);
-  console.log('[Content] Modal overlay appended to document.body');
+  console.log(
+    '[Content] - ' +
+      getHrTimestamp() +
+      ' Modal overlay appended to document.body',
+  );
 
   // Create the close button in the top right-hand corner of the page
   const closeButton = document.createElement('button');
@@ -165,7 +183,11 @@ function showDangerModal() {
   closeButton.style.fontSize = '16px';
   closeButton.style.cursor = 'pointer';
   closeButton.addEventListener('click', () => {
-    console.log('[Content] Close button clicked, removing modal overlay');
+    console.log(
+      '[Content] - ' +
+        getHrTimestamp() +
+        ' Close button clicked, removing modal overlay',
+    );
     chrome.runtime.sendMessage({ type: 'resumeScans' });
     modalOverlay.remove();
   });

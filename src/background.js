@@ -4,6 +4,7 @@
 
 import blockhash from 'blockhash-core';
 import { parse } from 'tldts';
+import { getHrTimestamp } from './utils';
 
 // Global settings
 const HASH_GRID_SIZE = 8;
@@ -39,7 +40,7 @@ function logMessage(message) {
             console.error('Error updating logs:', chrome.runtime.lastError);
           }
         });
-        console.log(timestampedMessage);
+        // console.log(timestampedMessage);
       }
     },
   );
@@ -53,7 +54,7 @@ function saveLogsToFile() {
 
     chrome.downloads.download({
       url: url,
-      filename: `${sessionStartTime}/logs/performance_${Date.now()}.txt`,
+      filename: `${sessionStartTime}/logs/performance_${getHrTimestamp()}.txt`,
       saveAs: false,
     });
 
@@ -84,7 +85,9 @@ const initLocalData = {
 
 // Store the values in chrome.storage.local
 chrome.storage.local.set(initLocalData, () => {
-  console.log('[Background] - ' + Date.now() + ' - Local storage initialized');
+  console.log(
+    '[Background] - ' + getHrTimestamp() + ' - Local storage initialized',
+  );
 });
 
 // Tranco list init
@@ -110,11 +113,13 @@ function loadTrancoIntoMemory(filePath = './tranco_100k.csv') {
 
       const processingTime = Date.now() - startProcessing;
       console.log(
-        `[Background] - ${Date.now()} - Time to process CSV into Set: ${processingTime} ms`,
+        `[Background] - ${getHrTimestamp()} - Time to process CSV into Set: ${processingTime} ms`,
       );
 
       console.log(
-        '[Background] - ' + Date.now() + ' - First 5 entries in Tranco Set:',
+        '[Background] - ' +
+          getHrTimestamp() +
+          ' - First 5 entries in Tranco Set:',
         [...trancoSet].slice(0, 5),
       );
 
@@ -140,7 +145,7 @@ async function initBackground() {
     await ensureOffscreen();
     let offscreenCreateTotalTime = Date.now() - offscreenCreateStartTime;
     console.log(
-      `[Background] - ${Date.now()} - Offscreen doc created in ${offscreenCreateTotalTime} ms`,
+      `[Background] - ${getHrTimestamp()} - Offscreen doc created in ${offscreenCreateTotalTime} ms`,
     );
     logMessage(
       `[Background] - offscreen doc creation time: ${offscreenCreateTotalTime} ms`,
@@ -150,7 +155,7 @@ async function initBackground() {
     let size = await loadTrancoIntoMemory();
     let loadTrancoTotalTime = Date.now() - loadTrancoStartTime;
     console.log(
-      `[Background] - ${Date.now()} - Tranco List Loaded (${size} domains) in ${loadTrancoTotalTime} ms`,
+      `[Background] - ${getHrTimestamp()} - Tranco List Loaded (${size} domains) in ${loadTrancoTotalTime} ms`,
     );
     logMessage(
       `[Background] - tranco list load time: ${loadTrancoTotalTime} ms`,
@@ -158,7 +163,7 @@ async function initBackground() {
     chrome.storage.local.set({ backgroundInitialized: true });
     let initBackgroundTotalTime = Date.now() - initBackgroundStartTime;
     console.log(
-      `[Background] - ${Date.now()} - Backgroung initialized in ${initBackgroundTotalTime} ms`,
+      `[Background] - ${getHrTimestamp()} - Backgroung initialized in ${initBackgroundTotalTime} ms`,
     );
     logMessage(
       `[Background] - background init time: ${initBackgroundTotalTime} ms`,
@@ -171,18 +176,22 @@ initBackground();
 
 // Setting up message passing ports for heavier and more frequent messaging
 chrome.runtime.onConnect.addListener((port) => {
-  console.log(`[Background] - ${Date.now()} - Connected to: ${port.name}`);
+  console.log(
+    `[Background] - ${getHrTimestamp()} - Connected to: ${port.name}`,
+  );
 
   if (port.name === 'offscreenPort') {
     offscreenPort = port;
 
     port.onMessage.addListener((message) => {
       if (message.type === 'infResponse') {
-        console.log('[Background] - ' + Date.now() + ' - Received infResponse');
+        console.log(
+          '[Background] - ' + getHrTimestamp() + ' - Received infResponse',
+        );
 
         let pureAllInfTotalTime = Date.now() - pureAllInfStartTime;
         console.log(
-          `[Background] - ${Date.now()} - Pure all inference completed in ${pureAllInfTotalTime} ms.`,
+          `[Background] - ${getHrTimestamp()} - Pure all inference completed in ${pureAllInfTotalTime} ms.`,
         );
         logMessage(
           `[Background] - pure all inference time: ${pureAllInfTotalTime} ms`,
@@ -198,7 +207,7 @@ chrome.runtime.onConnect.addListener((port) => {
         };
 
         console.log(
-          `[Background] - ${Date.now()} - Pure ONNX inference time: ${
+          `[Background] - ${getHrTimestamp()} - Pure ONNX inference time: ${
             message.data.infTime
           } ms.`,
         );
@@ -206,7 +215,7 @@ chrome.runtime.onConnect.addListener((port) => {
           `[Background] - pure onnx inference time: ${message.data.infTime} ms`,
         );
         console.log(
-          `[Background] - ${Date.now()} - Pure OCR inference time ${
+          `[Background] - ${getHrTimestamp()} - Pure OCR inference time ${
             message.data.ocrTime
           } ms.`,
         );
@@ -217,7 +226,7 @@ chrome.runtime.onConnect.addListener((port) => {
         chrome.storage.local.set(infData, () => {
           console.log(
             '[Background] - ' +
-              Date.now() +
+              getHrTimestamp() +
               ' - Local storage updated with infResponse',
           );
         });
@@ -226,7 +235,7 @@ chrome.runtime.onConnect.addListener((port) => {
       if (message.type === 'offscreenInit') {
         chrome.storage.local.set({ offscreenInitialized: true });
         console.log(
-          `[Background] - ${Date.now()} - ONNX worker created in ${
+          `[Background] - ${getHrTimestamp()} - ONNX worker created in ${
             message.data.onnxInitTime
           } ms`,
         );
@@ -234,7 +243,7 @@ chrome.runtime.onConnect.addListener((port) => {
           `[Background] - onnx worker creation time: ${message.data.onnxInitTime} ms`,
         );
         console.log(
-          `[Background] - ${Date.now()} - Tokenizer initialized in ${
+          `[Background] - ${getHrTimestamp()} - Tokenizer initialized in ${
             message.data.tokenizerInitTime
           } ms`,
         );
@@ -242,7 +251,7 @@ chrome.runtime.onConnect.addListener((port) => {
           `[Background] - tokenizer initialization time: ${message.data.tokenizerInitTime} ms`,
         );
         console.log(
-          `[Background] - ${Date.now()} - OCR initialized in ${
+          `[Background] - ${getHrTimestamp()} - OCR initialized in ${
             message.data.ocrInitTime
           } ms`,
         );
@@ -250,7 +259,7 @@ chrome.runtime.onConnect.addListener((port) => {
           `[Background] - ocr initialization time: ${message.data.ocrInitTime} ms`,
         );
         console.log(
-          `[Background] - ${Date.now()} - Offscreen initialized in ${
+          `[Background] - ${getHrTimestamp()} - Offscreen initialized in ${
             message.data.offscreenInitTime
           } ms`,
         );
@@ -261,7 +270,9 @@ chrome.runtime.onConnect.addListener((port) => {
     });
 
     port.onDisconnect.addListener(() => {
-      console.log('[Background] - ' + Date.now() + ' - Popup disconnected.');
+      console.log(
+        '[Background] - ' + getHrTimestamp() + ' - Popup disconnected.',
+      );
       offscreenPort = null;
     });
   }
@@ -273,7 +284,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'resumeScans') {
     console.log(
       '[Background] - ' +
-        Date.now() +
+        getHrTimestamp() +
         ' - Resuming scan interval upon user interaction with popup',
     );
     runScans();
@@ -308,7 +319,7 @@ async function saveScreenshot(dataUrl, baseDir, filename) {
                     console.error('Download error:', chrome.runtime.lastError);
                   } else {
                     console.log(
-                      `[Background] - ${Date.now()} - Screenshot saved as: ${fullPath}`,
+                      `[Background] - ${getHrTimestamp()} - Screenshot saved as: ${fullPath}`,
                     );
                   }
                 },
@@ -326,7 +337,7 @@ function injectContentScript() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs && tabs.length > 0 && tabs[0].id) {
       console.log(
-        `[Background] - ${Date.now()} - Injecting content.js into tab: ${
+        `[Background] - ${getHrTimestamp()} - Injecting content.js into tab: ${
           tabs[0].id
         }`,
       );
@@ -339,7 +350,9 @@ function injectContentScript() {
           // Pause the scanning interval once the content script is injected
           if (scanId) {
             clearInterval(scanId);
-            console.log('[Background] - Scanning paused.');
+            console.log(
+              `[Background] - ${getHrTimestamp()} - Scanning paused.`,
+            );
           }
         },
       );
@@ -360,7 +373,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
       chrome.storage.local.set({ totalTime: case23TotalTime });
 
       console.log(
-        `[Background] - ${Date.now()} - Case 2 or 3 (phash = null | phash > thold) scan completed in ${case23TotalTime} ms.`,
+        `[Background] - ${getHrTimestamp()} - Case 2 or 3 (phash = null | phash > thold) scan completed in ${case23TotalTime} ms.`,
       );
       logMessage(
         `[Background] - case 2 or 3 total time: ${case23TotalTime} ms`,
@@ -372,7 +385,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
           saveScreenshot(
             ssDataUrlRaw,
             `${sessionStartTime}/${result.classification.split('_')[0]}`,
-            `${currentDomain}_${result.phash}_${Date.now()}`,
+            `${currentDomain}_${result.phash}_${getHrTimestamp()}`,
           );
         },
       );
@@ -397,19 +410,21 @@ async function ensureOffscreen() {
         justification: 'Needed to run ONNX inference',
       });
       console.log(
-        '[Background] - ' + Date.now() + ' - Offscreen document created.',
+        '[Background] - ' + getHrTimestamp() + ' - Offscreen document created.',
       );
     } else {
       console.log(
         '[Background] - ' +
-          Date.now() +
+          getHrTimestamp() +
           ' - Offscreen document already exists.',
       );
     }
     return true;
   } catch (err) {
     console.error(
-      '[Background] - ' + Date.now() + ' - Error ensuring offscreen document:',
+      '[Background] - ' +
+        getHrTimestamp() +
+        ' - Error ensuring offscreen document:',
       err,
     );
     return false;
@@ -418,7 +433,9 @@ async function ensureOffscreen() {
 
 function captureScreenshot() {
   console.log(
-    '[Background] - ' + Date.now() + ' - Attempting to capture screenshot...',
+    '[Background] - ' +
+      getHrTimestamp() +
+      ' - Attempting to capture screenshot...',
   );
 
   return new Promise((resolve, reject) => {
@@ -432,7 +449,9 @@ function captureScreenshot() {
         return;
       }
 
-      console.log('[Background] - ' + Date.now() + ' - Screenshot captured.');
+      console.log(
+        '[Background] - ' + getHrTimestamp() + ' - Screenshot captured.',
+      );
       resolve(dataUrl);
     });
   });
@@ -481,14 +500,14 @@ function sendSsDataToOffscreen(data) {
   if (offscreenPort) {
     console.log(
       '[Background] - ' +
-        Date.now() +
+        getHrTimestamp() +
         ' - Sending raw screenshot data url to offscreen.',
     );
     offscreenPort.postMessage({ type: 'ssDataUrlRaw', data: data });
   } else {
     console.warn(
       '[Background] - ' +
-        Date.now() +
+        getHrTimestamp() +
         ' - offscreen not connected to receive the screenshot.',
     );
   }
@@ -514,7 +533,7 @@ async function startInference() {
   chrome.storage.local.set({ dataUrl: ssDataUrlRaw });
   let takeSsTime = Date.now() - startTakeSsTime;
   console.log(
-    `[Background] - ${Date.now()} - Time to take screenshot: ${takeSsTime} ms`,
+    `[Background] - ${getHrTimestamp()} - Time to take screenshot: ${takeSsTime} ms`,
   );
   logMessage(`[Background] - screenshot capture time: ${takeSsTime} ms`);
 
@@ -523,14 +542,16 @@ async function startInference() {
   let phashNew = await getImagePHash(ssDataUrlRaw);
   let phashTotalTime = Date.now() - phashStartTime;
   console.log(
-    `[Background] - ${Date.now()} - Time to phash: ${phashTotalTime} ms`,
+    `[Background] - ${getHrTimestamp()} - Time to phash: ${phashTotalTime} ms`,
   );
   logMessage(`[Background] - phash computation time: ${phashTotalTime} ms`);
 
   // Selecting appropriate case
   chrome.storage.local.get(['phash'], (result) => {
     let phashCurrent = result.phash;
-    console.log(`[Background] Retrieved phash value: ${phashCurrent}`);
+    console.log(
+      `[Background] - ${getHrTimestamp()} - Retrieved phash value: ${phashCurrent}`,
+    );
     // CASE 2 - No phash -> inference
     if (phashCurrent === null || phashCurrent === 'NA') {
       pureAllInfStartTime = Date.now();
@@ -545,7 +566,7 @@ async function startInference() {
         chrome.storage.local.set({ phash: phashNew, hammingDistance }, () => {
           console.log(
             '[Background] - ' +
-              Date.now() +
+              getHrTimestamp() +
               ' - Updated local storage: Phash greater than threshold',
           );
         });
@@ -553,7 +574,7 @@ async function startInference() {
       } else {
         let case4TotalTime = Date.now() - scanStartTime;
         console.log(
-          `[Background] - ${Date.now()} - Case 4 (phash < thold) scan complete in ${case4TotalTime} ms.`,
+          `[Background] - ${getHrTimestamp()} - Case 4 (phash < thold) scan complete in ${case4TotalTime} ms.`,
         );
         logMessage(`[Background] - case 4 total time: ${case4TotalTime} ms`);
         const case4Data = {
@@ -568,7 +589,7 @@ async function startInference() {
         chrome.storage.local.set(case4Data, () => {
           console.log(
             '[Background] - ' +
-              Date.now() +
+              getHrTimestamp() +
               ' - Local storage updated: (Case 4) Phash less than threshold.',
           );
         });
@@ -576,7 +597,7 @@ async function startInference() {
           saveScreenshot(
             ssDataUrlRaw,
             `${sessionStartTime}/${result.classification.split('_')[0]}`,
-            `${currentDomain}_${result.phash}_${Date.now()}`,
+            `${currentDomain}_${result.phash}_${getHrTimestamp()}`,
           );
         });
       }
@@ -594,7 +615,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
         if (result.offscreenInitialized && result.backgroundInitialized) {
           let initTotalTime = Date.now() - sessionStartTime;
           console.log(
-            `[Background] - Initialization completed in ${initTotalTime} ms`,
+            `[Background] - ${getHrTimestamp()} - Initialization completed in ${initTotalTime} ms`,
           );
           logMessage(
             `[Background] - initialization completion time: ${initTotalTime} ms`,
@@ -612,7 +633,7 @@ function runScans() {
   scanId = setInterval(() => {
     chrome.storage.local.get(['mainToggleState'], (data) => {
       if (data.mainToggleState) {
-        console.log('[Background] - ' + Date.now() + ' - Toggle is ON.');
+        console.log('[Background] - ' + getHrTimestamp() + ' - Toggle is ON.');
 
         scanStartTime = Date.now();
 
@@ -622,7 +643,7 @@ function runScans() {
           if (trancoSet.has(domain)) {
             // if (false) {
             console.log(
-              `[Background] - ${Date.now()} - Domain in Tranco set: ${domain}`,
+              `[Background] - ${getHrTimestamp()} - Domain in Tranco set: ${domain}`,
             );
             let case1TotalTime = Date.now() - scanStartTime;
             const case1Data = {
@@ -639,12 +660,12 @@ function runScans() {
             chrome.storage.local.set(case1Data, () => {
               console.log(
                 '[Background] - ' +
-                  Date.now() +
+                  getHrTimestamp() +
                   ' - Local storage updated: (Case 1) Tranco whitelist.',
               );
             });
             console.log(
-              `[Background] - ${Date.now()} - Case 1 (white list) scan completed in ${case1TotalTime} ms`,
+              `[Background] - ${getHrTimestamp()} - Case 1 (white list) scan completed in ${case1TotalTime} ms`,
             );
             logMessage(
               `[Background] - case 1 total time: ${case1TotalTime} ms`,
@@ -653,17 +674,19 @@ function runScans() {
             saveScreenshot(
               ssDataUrlRaw,
               `${sessionStartTime}/benign`,
-              `${domain}_wl_${Date.now()}`,
+              `${domain}_wl_${getHrTimestamp()}`,
             );
           } else {
             console.log(
-              '[Background] - ' + Date.now() + ' - Domain not in Tranco set.',
+              '[Background] - ' +
+                getHrTimestamp() +
+                ' - Domain not in Tranco set.',
             );
             startInference();
           }
         });
       } else {
-        console.log('[Background] - ' + Date.now() + ' - Toggle is OFF.');
+        console.log('[Background] - ' + getHrTimestamp() + ' - Toggle is OFF.');
       }
     });
   }, SCAN_INTERVAL);
