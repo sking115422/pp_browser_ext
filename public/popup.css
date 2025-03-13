@@ -1,47 +1,123 @@
-html {
-  text-align: center;
-}
-
+/* Full width of the popup */
+html,
 body {
-  font-family: Arial, sans-serif;
-  text-align: center;
-  padding: 10px;
-  display: inline-block; /* Allows the width to shrink-to-fit its content */
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
 }
 
-#mainToggle {
+.container {
+  background: white;
+  padding: 15px;
+  box-sizing: border-box;
+  width: 250px;
+  height: 600px;
+  max-width: 250px;
+  max-height: 600px;
+  overflow: auto;
+  text-align: center;
+
+  /* Flexbox for consistent spacing */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 15px; /* Ensures even spacing between elements */
+}
+
+.container-small-btn {
+  display: flex;
+  justify-content: center; /* Centering horizontally */
+  width: 100%;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: 15px 20px;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+}
+
+h1 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.h3-custom {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px; /* Ensures 15px spacing between span and button */
+  width: 125px;
+}
+
+.normal-btn {
   padding: 10px;
-  /* margin-top: 15px; */
   font-size: 16px;
   cursor: pointer;
   border-radius: 5px;
-}
-
-#ssLoggingToggle {
-  padding: 4px;
-  font-size: 10px;
-  width: auto;
-  height: auto;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-#performanceLoggingToggle {
-  padding: 4px;
-  font-size: 10px;
-  width: auto;
-  height: auto;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-bottom: 10px;
+  border: none;
+  width: 80px;
+  color: white;
 }
 
 .on {
   background-color: green;
-  color: white;
 }
 
 .off {
   background-color: red;
+}
+
+.small-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  width: 50px;
+  border-radius: 5px;
+  border: none;
   color: white;
+}
+
+img {
+  width: 100%;
+  max-width: 224px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ocr-text {
+  text-align: center;
+  font-size: 14px;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+table {
+  width: 90%;
+  margin-top: 10px;
+  border-collapse: collapse;
+}
+
+td {
+  padding: 5px;
+  font-size: 14px;
+}
+
+td:first-child {
+  text-align: left;
+  font-weight: bold;
+  width: 50%;
+}
+
+td:last-child {
+  text-align: left;
+  width: 50%;
 }

@@ -44,7 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update function for main toggle
   function updateToggleButton(isOn) {
     mainToggle.textContent = isOn ? 'ON' : 'OFF';
-    mainToggle.className = isOn ? 'on' : 'off';
+    mainToggle.classList.remove('on', 'off');
+    mainToggle.classList.add(isOn ? 'on' : 'off');
     console.log('[Popup] - ' + Date.now() + ' - Toggle button updated:', isOn);
   }
 
@@ -72,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update function for SS Logging toggle
   function updateSsLoggingToggle(isOn) {
     ssLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
-    ssLoggingToggle.className = isOn ? 'on' : 'off';
+    ssLoggingToggle.classList.remove('on', 'off');
+    ssLoggingToggle.classList.add(isOn ? 'on' : 'off');
     console.log(
       '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
       isOn,
@@ -103,7 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update function for performance Logging toggle
   function updatePerformanceLoggingToggle(isOn) {
     performanceLoggingToggle.textContent = isOn ? 'ON' : 'OFF';
-    performanceLoggingToggle.className = isOn ? 'on' : 'off';
+    performanceLoggingToggle.classList.remove('on', 'off');
+    performanceLoggingToggle.classList.add(isOn ? 'on' : 'off');
     console.log(
       '[Popup] - ' + Date.now() + ' - SS Logging button updated:',
       isOn,
